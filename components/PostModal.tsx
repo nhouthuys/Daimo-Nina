@@ -1,13 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { CarouselSlide, FORMAT_LABELS, Post, PostFormat, PostStatus } from "@/lib/types";
-import { generateBackgroundImage } from "@/lib/backgroundImage";
+import {
+  CarouselSlide,
+  FORMAT_LABELS,
+  GRAPHIC_CATEGORY_LABELS,
+  GraphicCategory,
+  Post,
+  PostFormat,
+  PostStatus,
+} from "@/lib/types";
+import { generatePostGraphic } from "@/lib/graphic";
 import { Modal } from "./Modal";
 
 function newSlide(): CarouselSlide {
   return { id: crypto.randomUUID(), caption: "" };
 }
+
+const DEFAULT_HIGHLIGHT: Record<GraphicCategory, string> = {
+  tip: "Gagnez du temps sur vos process →",
+  client: "Résultats mesurés chez nos clients →",
+  hiring: "Postulez dès maintenant →",
+};
 
 export function PostModal({
   initial,
@@ -29,6 +43,7 @@ export function PostModal({
   const [slides, setSlides] = useState<CarouselSlide[]>(
     initial.slides && initial.slides.length > 0 ? initial.slides : [newSlide(), newSlide()]
   );
+  const [graphicCategory, setGraphicCategory] = useState<GraphicCategory>(initial.graphicCategory ?? "tip");
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [status, setStatus] = useState<PostStatus>(initial.status);
@@ -44,6 +59,7 @@ export function PostModal({
       content,
       imageUrl: format === "image" ? imageUrl : undefined,
       slides: format === "carousel" ? slides.filter((s) => s.caption.trim() !== "") : undefined,
+      graphicCategory: format === "image" || format === "carousel" ? graphicCategory : undefined,
       date,
       time,
       status,
@@ -55,9 +71,44 @@ export function PostModal({
     setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, caption } : s)));
   }
 
-  function regenerateSlideImage(id: string) {
-    const url = generateBackgroundImage(1080, 1080);
+  function regenerateSlideImage(id: string, caption: string) {
+    const url = generatePostGraphic({
+      category: graphicCategory,
+      headline: caption || "Votre texte ici",
+      slideIndex: slides.findIndex((s) => s.id === id) + 1,
+      slideCount: slides.length,
+    });
     setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
+  }
+
+  function regenerateImage() {
+    setImageUrl(
+      generatePostGraphic({
+        category: graphicCategory,
+        headline: title || "Votre titre ici",
+        highlight: DEFAULT_HIGHLIGHT[graphicCategory],
+      })
+    );
+  }
+
+  function categorySelector() {
+    return (
+      <div className="flex gap-1.5">
+        {(Object.keys(GRAPHIC_CATEGORY_LABELS) as GraphicCategory[]).map((c) => (
+          <button
+            key={c}
+            onClick={() => setGraphicCategory(c)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+              graphicCategory === c
+                ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
+                : "border-slate-200 text-slate-500 hover:border-daimo-blue/30"
+            }`}
+          >
+            {GRAPHIC_CATEGORY_LABELS[c]}
+          </button>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -120,15 +171,18 @@ export function PostModal({
 
         {format === "image" && (
           <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Style visuel
+              </label>
+              {categorySelector()}
+            </div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Image de fond
+                Image (le titre y est affiché automatiquement)
               </label>
-              <button
-                onClick={() => setImageUrl(generateBackgroundImage(1200, 630))}
-                className="text-xs font-medium text-daimo-blue hover:underline"
-              >
-                🎨 Générer une image de fond
+              <button onClick={regenerateImage} className="text-xs font-medium text-daimo-blue hover:underline">
+                🎨 Générer l&apos;image
               </button>
             </div>
             {imageUrl ? (
@@ -140,20 +194,26 @@ export function PostModal({
               />
             ) : (
               <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
-                Aucune image — cliquez sur « Générer une image de fond »
+                Aucune image — cliquez sur « Générer l&apos;image »
               </div>
             )}
             <p className="mt-1 text-xs text-slate-400">
-              Générée automatiquement aux couleurs Daïmo (dégradé + motif de la charte), 100% côté
-              navigateur.
+              Générée automatiquement aux couleurs Daïmo, avec le titre et une accroche affichés
+              directement sur le visuel — 100% côté navigateur.
             </p>
           </div>
         )}
 
         {format === "carousel" && (
           <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Style visuel
+              </label>
+              {categorySelector()}
+            </div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Slides du carrousel
+              Slides du carrousel — le texte de chaque slide s&apos;affiche sur son image
             </label>
             <div className="space-y-2">
               {slides.map((slide, i) => (
@@ -163,7 +223,7 @@ export function PostModal({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={slide.imageUrl}
-                      alt={`Fond de la slide ${i + 1}`}
+                      alt={`Aperçu de la slide ${i + 1}`}
                       className="h-10 w-10 shrink-0 rounded-md border border-slate-200 object-cover"
                     />
                   ) : (
@@ -176,10 +236,10 @@ export function PostModal({
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
                   />
                   <button
-                    onClick={() => regenerateSlideImage(slide.id)}
+                    onClick={() => regenerateSlideImage(slide.id, slide.caption)}
                     className="shrink-0 text-sm text-daimo-blue hover:opacity-70"
-                    aria-label="Régénérer l'image de fond de la slide"
-                    title="Régénérer l'image de fond"
+                    aria-label="Régénérer l'image de la slide"
+                    title="Régénérer l'image"
                   >
                     🎨
                   </button>

@@ -2,6 +2,15 @@ export type PostFormat = "article" | "image" | "carousel";
 
 export type PostStatus = "draft" | "scheduled" | "published";
 
+/** Visual theme used by the generated graphics: badge label, gradient and accent differ per category. */
+export type GraphicCategory = "tip" | "client" | "hiring";
+
+export const GRAPHIC_CATEGORY_LABELS: Record<GraphicCategory, string> = {
+  tip: "Astuce process",
+  client: "Cas client",
+  hiring: "Recrutement",
+};
+
 export interface CarouselSlide {
   id: string;
   caption: string;
@@ -15,6 +24,8 @@ export interface Post {
   content: string;
   imageUrl?: string;
   slides?: CarouselSlide[];
+  /** Visual theme applied to imageUrl/slides, kept so a manual regeneration stays consistent. */
+  graphicCategory?: GraphicCategory;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   status: PostStatus;

@@ -1,24 +1,52 @@
-import { buildGeneratedPost } from "./generate";
-import { generateBackgroundImage } from "./backgroundImage";
+import { generateContent, pickWeightedFormat } from "./generate";
+import { generatePostGraphic } from "./graphic";
 import { Post } from "./types";
 
 /**
  * Produces a full, ready-to-review post: real generated copy (title + content,
- * or slide captions for a carousel) plus a real generated background image for
- * formats that need one. Everything runs locally in the browser — no external
- * API is called — so this only works client-side.
+ * or slide captions for a carousel) plus a real generated graphic — headline and
+ * highlight drawn on an on-brand canvas background — for formats that need one.
+ * Everything runs locally in the browser, no external API involved, so this only
+ * works client-side. All slides of a carousel share the same category/theme so
+ * the set reads as one consistent design instead of a random grab-bag of colors.
  */
 export function createGeneratedPost(date: string, time: string): Post {
-  const post = buildGeneratedPost(date, time);
+  const format = pickWeightedFormat();
+  const generated = generateContent(format);
+  const now = new Date().toISOString();
 
-  if (post.format === "image") {
-    post.imageUrl = generateBackgroundImage(1200, 630);
+  const post: Post = {
+    id: crypto.randomUUID(),
+    format,
+    title: generated.title,
+    content: generated.content,
+    slides: generated.slides,
+    graphicCategory: generated.category,
+    date,
+    time,
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (format === "image") {
+    post.imageUrl = generatePostGraphic({
+      category: generated.category,
+      headline: generated.title,
+      highlight: generated.highlight,
+    });
   }
 
-  if (post.format === "carousel" && post.slides) {
-    post.slides = post.slides.map((slide) => ({
+  if (format === "carousel" && post.slides) {
+    const slideCount = post.slides.length;
+    post.slides = post.slides.map((slide, i) => ({
       ...slide,
-      imageUrl: generateBackgroundImage(1080, 1080),
+      imageUrl: generatePostGraphic({
+        category: generated.category,
+        headline: slide.caption,
+        slideIndex: i + 1,
+        slideCount,
+      }),
     }));
   }
 
