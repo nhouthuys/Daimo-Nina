@@ -14,6 +14,7 @@ import { FormatLegend } from "@/components/PostBadge";
 import { usePosts } from "@/lib/usePosts";
 import { Post } from "@/lib/types";
 import { todayISO } from "@/lib/date";
+import { createGeneratedPost } from "@/lib/autoGenerate";
 
 function emptyPost(date: string): Post {
   const now = new Date().toISOString();
@@ -38,7 +39,7 @@ export default function Home() {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [infoModal, setInfoModal] = useState<"notes" | "charter" | "generate" | null>(null);
+  const [infoModal, setInfoModal] = useState<"notes" | "charter" | null>(null);
   const [connected, setConnected] = useState(false);
 
   function goToMonth(delta: number) {
@@ -56,7 +57,7 @@ export default function Home() {
         <ActionBar
           onNotes={() => setInfoModal("notes")}
           onCharter={() => setInfoModal("charter")}
-          onGenerate={() => setInfoModal("generate")}
+          onGenerate={() => setEditingPost(createGeneratedPost(todayISO(), "09:00"))}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
         />
 
@@ -95,6 +96,7 @@ export default function Home() {
 
       {editingPost && (
         <PostModal
+          key={editingPost.id}
           initial={editingPost}
           onClose={() => setEditingPost(null)}
           onSave={(post) => {
@@ -105,6 +107,7 @@ export default function Home() {
             deletePost(id);
             setEditingPost(null);
           }}
+          onRegenerate={() => setEditingPost(createGeneratedPost(editingPost.date, editingPost.time))}
         />
       )}
 
@@ -141,17 +144,6 @@ export default function Home() {
           <p className="text-xs text-slate-400">
             Typographies : Exo 2 (titres), Exo (texte courant) — Calibri en substitution.
           </p>
-        </InfoModal>
-      )}
-
-      {infoModal === "generate" && (
-        <InfoModal title="Générer un post" onClose={() => setInfoModal(null)}>
-          <p>
-            La génération assistée de posts (texte + visuel) n&apos;est pas encore connectée dans
-            cette version. Elle nécessiterait une intégration avec un modèle de génération de
-            contenu.
-          </p>
-          <p>En attendant, créez votre post manuellement via « + Nouveau post ».</p>
         </InfoModal>
       )}
     </main>

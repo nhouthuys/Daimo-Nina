@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CarouselSlide, FORMAT_LABELS, Post, PostFormat, PostStatus } from "@/lib/types";
+import { generateBackgroundImage } from "@/lib/backgroundImage";
 import { Modal } from "./Modal";
 
 function newSlide(): CarouselSlide {
@@ -13,11 +14,13 @@ export function PostModal({
   onSave,
   onDelete,
   onClose,
+  onRegenerate,
 }: {
   initial: Post;
   onSave: (post: Post) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
+  onRegenerate?: () => void;
 }) {
   const [format, setFormat] = useState<PostFormat>(initial.format);
   const [title, setTitle] = useState(initial.title);
@@ -52,9 +55,23 @@ export function PostModal({
     setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, caption } : s)));
   }
 
+  function regenerateSlideImage(id: string) {
+    const url = generateBackgroundImage(1080, 1080);
+    setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
+  }
+
   return (
     <Modal title={isEditing ? "Modifier le post" : "Nouveau post"} onClose={onClose} wide>
       <div className="space-y-5">
+        {onRegenerate && (
+          <button
+            onClick={onRegenerate}
+            className="inline-flex items-center gap-1.5 rounded-full border border-daimo-blue/30 bg-daimo-blue/5 px-3 py-1.5 text-xs font-medium text-daimo-blue hover:bg-daimo-blue/10"
+          >
+            🔁 Générer un autre post (texte + image)
+          </button>
+        )}
+
         <div>
           <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
             Format
@@ -103,19 +120,33 @@ export function PostModal({
 
         {format === "image" && (
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Image (URL)
-            </label>
-            <input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
-            />
-            {imageUrl && (
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Image de fond
+              </label>
+              <button
+                onClick={() => setImageUrl(generateBackgroundImage(1200, 630))}
+                className="text-xs font-medium text-daimo-blue hover:underline"
+              >
+                🎨 Générer une image de fond
+              </button>
+            </div>
+            {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="Aperçu" className="mt-2 max-h-40 rounded-lg border border-slate-200 object-cover" />
+              <img
+                src={imageUrl}
+                alt="Aperçu de l'image générée"
+                className="aspect-[1200/630] w-full rounded-lg border border-slate-200 object-cover"
+              />
+            ) : (
+              <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
+                Aucune image — cliquez sur « Générer une image de fond »
+              </div>
             )}
+            <p className="mt-1 text-xs text-slate-400">
+              Générée automatiquement aux couleurs Daïmo (dégradé + motif de la charte), 100% côté
+              navigateur.
+            </p>
           </div>
         )}
 
@@ -128,12 +159,30 @@ export function PostModal({
               {slides.map((slide, i) => (
                 <div key={slide.id} className="flex items-center gap-2">
                   <span className="w-5 shrink-0 text-xs text-slate-400">{i + 1}</span>
+                  {slide.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={slide.imageUrl}
+                      alt={`Fond de la slide ${i + 1}`}
+                      className="h-10 w-10 shrink-0 rounded-md border border-slate-200 object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 shrink-0 rounded-md border border-dashed border-slate-300 bg-slate-50" />
+                  )}
                   <input
                     value={slide.caption}
                     onChange={(e) => updateSlide(slide.id, e.target.value)}
                     placeholder={`Texte de la slide ${i + 1}`}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
                   />
+                  <button
+                    onClick={() => regenerateSlideImage(slide.id)}
+                    className="shrink-0 text-sm text-daimo-blue hover:opacity-70"
+                    aria-label="Régénérer l'image de fond de la slide"
+                    title="Régénérer l'image de fond"
+                  >
+                    🎨
+                  </button>
                   <button
                     onClick={() => setSlides((prev) => prev.filter((s) => s.id !== slide.id))}
                     className="shrink-0 text-slate-400 hover:text-daimo-pink"
