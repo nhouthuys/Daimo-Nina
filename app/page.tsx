@@ -41,12 +41,23 @@ export default function Home() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [infoModal, setInfoModal] = useState<"notes" | "charter" | null>(null);
   const [connected, setConnected] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   function goToMonth(delta: number) {
     setCursor((prev) => {
       const d = new Date(prev.year, prev.month + delta, 1);
       return { year: d.getFullYear(), month: d.getMonth() };
     });
+  }
+
+  async function handleGenerate(date: string, time: string) {
+    setGenerating(true);
+    try {
+      const post = await createGeneratedPost(date, time);
+      setEditingPost(post);
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
@@ -57,7 +68,8 @@ export default function Home() {
         <ActionBar
           onNotes={() => setInfoModal("notes")}
           onCharter={() => setInfoModal("charter")}
-          onGenerate={() => setEditingPost(createGeneratedPost(todayISO(), "09:00"))}
+          onGenerate={() => handleGenerate(todayISO(), "09:00")}
+          generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
         />
 
@@ -107,7 +119,7 @@ export default function Home() {
             deletePost(id);
             setEditingPost(null);
           }}
-          onRegenerate={() => setEditingPost(createGeneratedPost(editingPost.date, editingPost.time))}
+          onRegenerate={() => handleGenerate(editingPost.date, editingPost.time)}
         />
       )}
 

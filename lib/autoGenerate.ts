@@ -10,7 +10,7 @@ import { Post } from "./types";
  * works client-side. All slides of a carousel share the same category/theme so
  * the set reads as one consistent design instead of a random grab-bag of colors.
  */
-export function createGeneratedPost(date: string, time: string): Post {
+export async function createGeneratedPost(date: string, time: string): Promise<Post> {
   const format = pickWeightedFormat();
   const generated = generateContent(format);
   const now = new Date().toISOString();
@@ -30,7 +30,7 @@ export function createGeneratedPost(date: string, time: string): Post {
   };
 
   if (format === "image") {
-    post.imageUrl = generatePostGraphic({
+    post.imageUrl = await generatePostGraphic({
       category: generated.category,
       headline: generated.title,
       highlight: generated.highlight,
@@ -39,15 +39,17 @@ export function createGeneratedPost(date: string, time: string): Post {
 
   if (format === "carousel" && post.slides) {
     const slideCount = post.slides.length;
-    post.slides = post.slides.map((slide, i) => ({
-      ...slide,
-      imageUrl: generatePostGraphic({
-        category: generated.category,
-        headline: slide.caption,
-        slideIndex: i + 1,
-        slideCount,
-      }),
-    }));
+    post.slides = await Promise.all(
+      post.slides.map(async (slide, i) => ({
+        ...slide,
+        imageUrl: await generatePostGraphic({
+          category: generated.category,
+          headline: slide.caption,
+          slideIndex: i + 1,
+          slideCount,
+        }),
+      }))
+    );
   }
 
   return post;

@@ -14,33 +14,24 @@ const THEMES: Record<GraphicCategory, Theme> = {
   hiring: { gradient: ["#662d91", "#ec008c"], badgeLabel: "ON RECRUTE", accent: "#ec008c" },
 };
 
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+// Real Daïmo brand assets extracted directly from the official graphic charter (not redrawn).
+const MARK_WHITE_SRC = "/daimo-mark-white.png"; // symbol only, white silhouette — for the decorative background bleed
+const LOCKUP_WHITE_SRC = "/daimo-logo-white.png"; // symbol + wordmark + baseline, white — for the footer, per the charter's "on colored background" rule
 
-/** Draws the Daïmo "play" mark (two stacked triangles) centered at (x, y). */
-function drawMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, rotation = 0) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.3, -size * 0.5);
-  ctx.lineTo(-size * 0.3, 0);
-  ctx.lineTo(size * 0.1, -size * 0.25);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.3, 0);
-  ctx.lineTo(-size * 0.3, size * 0.5);
-  ctx.lineTo(size * 0.5, 0);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
+const imageCache = new Map<string, Promise<HTMLImageElement>>();
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  let cached = imageCache.get(src);
+  if (!cached) {
+    cached = new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+    imageCache.set(src, cached);
+  }
+  return cached;
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -93,17 +84,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-function drawFooter(ctx: CanvasRenderingContext2D, width: number, height: number, padding: number) {
-  drawMark(ctx, padding + 12, height - padding - 2, 26, "#ffffff");
-  ctx.font = `700 20px ${FONT_STACK}`;
-  ctx.fillStyle = "#ffffff";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("DAÏMO", padding + 32, height - padding + 4);
-  ctx.font = `600 12px ${FONT_STACK}`;
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
-  ctx.fillText("A L L I E D   T O   P R O C E S S   I T", padding + 32, height - padding + 20);
-}
-
 export interface GraphicOptions {
   category: GraphicCategory;
   headline: string;
@@ -118,15 +98,17 @@ export interface GraphicOptions {
 
 /**
  * Renders a full, ready-to-post LinkedIn graphic entirely client-side via <canvas>:
- * on-brand gradient, the Daïmo mark, a category badge, the real headline text and
- * an optional highlight pill. Returns a JPEG data URL. No network call, no external
- * image — every pixel is drawn here, so this scales to any number of topics/roles.
+ * on-brand gradient, the real Daïmo mark/lockup images, a category badge, the real
+ * headline text and an optional highlight pill. Returns a JPEG data URL. No network
+ * call — every pixel is drawn here, so this scales to any number of topics/roles.
  */
-export function generatePostGraphic(opts: GraphicOptions): string {
+export async function generatePostGraphic(opts: GraphicOptions): Promise<string> {
   const isSlide = opts.slideIndex != null && opts.slideCount != null;
   const width = opts.width ?? (isSlide ? 1080 : 1200);
   const height = opts.height ?? (isSlide ? 1080 : 630);
   const theme = THEMES[opts.category];
+
+  const [markImg, lockupImg] = await Promise.all([loadImage(MARK_WHITE_SRC), loadImage(LOCKUP_WHITE_SRC)]);
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -141,8 +123,15 @@ export function generatePostGraphic(opts: GraphicOptions): string {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. One large, restrained brand mark bleeding off the top-right corner.
-  drawMark(ctx, width * 0.86, height * -0.02, height * 1.55, hexToRgba("#ffffff", 0.1), -0.2);
+  // 2. The real Daïmo mark, large and restrained, bleeding off the top-right corner.
+  const bleedH = height * 1.55;
+  const bleedW = bleedH * (markImg.width / markImg.height);
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.translate(width * 0.86, height * -0.02);
+  ctx.rotate(-0.2);
+  ctx.drawImage(markImg, -bleedW / 2, -bleedH / 2, bleedW, bleedH);
+  ctx.restore();
 
   // 3. Dark scrim so white text stays legible on any part of the gradient.
   ctx.fillStyle = "rgba(8, 12, 28, 0.32)";
@@ -181,7 +170,7 @@ export function generatePostGraphic(opts: GraphicOptions): string {
   );
 
   const headlineBlockHeight = lines.length * lineHeight;
-  const headlineTop = isSlide ? (height - headlineBlockHeight) / 2 - height * 0.04 : contentTop;
+  const headlineTop = isSlide ? (height - headlineBlockHeight) / 2 - height * 0.06 : contentTop;
 
   ctx.font = `800 ${fontSize}px ${FONT_STACK}`;
   ctx.fillStyle = "#ffffff";
@@ -212,15 +201,17 @@ export function generatePostGraphic(opts: GraphicOptions): string {
     ctx.textAlign = "left";
   }
 
-  // 7. Small Daïmo footer wordmark, bottom-left, on every graphic.
-  drawFooter(ctx, width, height, padding);
+  // 7. The real Daïmo lockup (symbol + wordmark + baseline), bottom-left, on every graphic.
+  const lockupH = height * 0.15;
+  const lockupW = lockupH * (lockupImg.width / lockupImg.height);
+  ctx.drawImage(lockupImg, padding, height - padding - lockupH, lockupW, lockupH);
 
   if (!isSlide) {
     ctx.font = `600 15px ${FONT_STACK}`;
     ctx.fillStyle = "rgba(255,255,255,0.75)";
     const site = "daimo.be";
     const siteWidth = ctx.measureText(site).width;
-    ctx.fillText(site, width - padding - siteWidth, height - padding + 6);
+    ctx.fillText(site, width - padding - siteWidth, height - padding + lockupH - 21);
   }
 
   return canvas.toDataURL("image/jpeg", 0.9);

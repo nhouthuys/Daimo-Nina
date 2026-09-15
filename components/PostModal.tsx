@@ -71,8 +71,8 @@ export function PostModal({
     setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, caption } : s)));
   }
 
-  function regenerateSlideImage(id: string, caption: string) {
-    const url = generatePostGraphic({
+  async function regenerateSlideImage(id: string, caption: string) {
+    const url = await generatePostGraphic({
       category: graphicCategory,
       headline: caption || "Votre texte ici",
       slideIndex: slides.findIndex((s) => s.id === id) + 1,
@@ -81,14 +81,13 @@ export function PostModal({
     setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
   }
 
-  function regenerateImage() {
-    setImageUrl(
-      generatePostGraphic({
-        category: graphicCategory,
-        headline: title || "Votre titre ici",
-        highlight: DEFAULT_HIGHLIGHT[graphicCategory],
-      })
-    );
+  async function regenerateImage() {
+    const url = await generatePostGraphic({
+      category: graphicCategory,
+      headline: title || "Votre titre ici",
+      highlight: DEFAULT_HIGHLIGHT[graphicCategory],
+    });
+    setImageUrl(url);
   }
 
   function categorySelector() {
