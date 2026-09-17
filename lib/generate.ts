@@ -87,9 +87,9 @@ const ARTICLE_CTAS = [
 ];
 
 const IMAGE_CAPTIONS = [
-  "{topicCap}, sans la charge manuelle. {benefitCap}. {stat}. 💡",
+  "{topicCap}, sans la charge manuelle. {benefitCap}. {statCap}. 💡",
   "On a aidé un client à repenser {topic}. {benefitCap} → {stat}. 🚀",
-  "{painPoint} Notre réponse : {benefitCap}. {stat}. ⚙️",
+  "{painPoint} Notre réponse : {benefitCap}. {statCap}. ⚙️",
 ];
 
 const TITLE_TEMPLATES = [
@@ -147,6 +147,58 @@ const HIRING_BODIES = [
   "On cherche notre futur·e {role} pour {mission}.\n\nSi {profile}, ce poste est pour vous. Parlons-en ! 🤝",
 ];
 
+// Generic phrasing used to build a post around a theme the user typed themselves —
+// kept deliberately non-specific (no invented numbers or claims) since there is no
+// AI backend here to actually research an arbitrary topic.
+const GENERIC_PAIN_POINTS = [
+  "C'est un sujet qui revient souvent chez nos clients.",
+  "Beaucoup d'équipes butent encore là-dessus au quotidien.",
+  "C'est rarement simple à gérer sans y consacrer trop de temps.",
+];
+
+const GENERIC_BENEFITS = [
+  "une approche sur mesure, pensée avec vos équipes",
+  "un accompagnement concret, étape par étape",
+  "une solution simple à mettre en place rapidement",
+];
+
+const GENERIC_STATS = [
+  "des résultats visibles dès les premières semaines",
+  "un vrai gain de temps pour les équipes",
+  "une organisation plus sereine au quotidien",
+];
+
+const GENERIC_STATS_SHORT = [
+  "Résultats visibles rapidement",
+  "Un vrai gain de temps",
+  "Plus de sérénité au quotidien",
+];
+
+function slugifyHashtag(theme: string): string {
+  const cleaned = theme
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map(capitalize)
+    .join("");
+  return cleaned ? `#${cleaned}` : "#Daimo";
+}
+
+function buildCustomTopic(theme: string): Topic {
+  return {
+    name: theme,
+    painPoint: pick(GENERIC_PAIN_POINTS),
+    benefit: pick(GENERIC_BENEFITS),
+    stat: pick(GENERIC_STATS),
+    statShort: pick(GENERIC_STATS_SHORT),
+    hashtag: slugifyHashtag(theme),
+  };
+}
+
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -162,7 +214,8 @@ function fill(template: string, topic: Topic): string {
     .replaceAll("{painPoint}", topic.painPoint)
     .replaceAll("{benefit}", topic.benefit)
     .replaceAll("{benefitCap}", capitalize(topic.benefit))
-    .replaceAll("{stat}", topic.stat);
+    .replaceAll("{stat}", topic.stat)
+    .replaceAll("{statCap}", capitalize(topic.stat));
 }
 
 function fillHiring(template: string, role: HiringRole): string {
@@ -217,11 +270,7 @@ function generateHiring(format: PostFormat): GeneratedContent {
   return { title, content, hashtag: role.hashtag, category: "hiring", highlight };
 }
 
-export function generateContent(format: PostFormat): GeneratedContent {
-  const category = pickCategory();
-  if (category === "hiring") return generateHiring(format);
-
-  const topic = pick(TOPICS);
+function generateFromTopic(format: PostFormat, topic: Topic, category: GraphicCategory): GeneratedContent {
   const title = fill(pick(TITLE_TEMPLATES), topic);
   const highlight = topic.statShort;
 
@@ -249,5 +298,23 @@ export function generateContent(format: PostFormat): GeneratedContent {
   ];
   const content = `Un carrousel pour explorer ${topic.name} et comment y remédier. ${topic.hashtag} #ProcessIT`;
   return { title, content, slides, hashtag: topic.hashtag, category, highlight };
+}
+
+/**
+ * Builds the post content. When `customTheme` is provided, the post is built
+ * around that exact theme (using generic, non-invented phrasing around it, since
+ * there is no AI backend here to research an arbitrary topic) instead of picking
+ * one of the built-in Daïmo topics or hiring roles at random.
+ */
+export function generateContent(format: PostFormat, customTheme?: string): GeneratedContent {
+  const theme = customTheme?.trim();
+  if (theme) {
+    const category: GraphicCategory = Math.random() < 0.5 ? "tip" : "client";
+    return generateFromTopic(format, buildCustomTopic(theme), category);
+  }
+
+  const category = pickCategory();
+  if (category === "hiring") return generateHiring(format);
+  return generateFromTopic(format, pick(TOPICS), category);
 }
 

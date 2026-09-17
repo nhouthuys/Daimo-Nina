@@ -13,9 +13,9 @@ function pickVisualStyle(): VisualStyle {
  * formats that need one. All slides of a carousel share the same category/theme
  * and visual style so the set reads as one consistent design.
  */
-export async function createGeneratedPost(date: string, time: string): Promise<Post> {
+export async function createGeneratedPost(date: string, time: string, customTheme?: string): Promise<Post> {
   const format = pickWeightedFormat();
-  const generated = generateContent(format);
+  const generated = generateContent(format, customTheme);
   const visualStyle = pickVisualStyle();
   const now = new Date().toISOString();
 

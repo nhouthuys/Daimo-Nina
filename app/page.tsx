@@ -50,10 +50,10 @@ export default function Home() {
     });
   }
 
-  async function handleGenerate(date: string, time: string) {
+  async function handleGenerate(date: string, time: string, customTheme?: string) {
     setGenerating(true);
     try {
-      const post = await createGeneratedPost(date, time);
+      const post = await createGeneratedPost(date, time, customTheme);
       setEditingPost(post);
     } finally {
       setGenerating(false);
@@ -68,7 +68,7 @@ export default function Home() {
         <ActionBar
           onNotes={() => setInfoModal("notes")}
           onCharter={() => setInfoModal("charter")}
-          onGenerate={() => handleGenerate(todayISO(), "09:00")}
+          onGenerate={(theme) => handleGenerate(todayISO(), "09:00", theme)}
           generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
         />

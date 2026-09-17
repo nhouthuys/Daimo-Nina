@@ -47,6 +47,8 @@ export function PostModal({
   );
   const [graphicCategory, setGraphicCategory] = useState<GraphicCategory>(initial.graphicCategory ?? "tip");
   const [visualStyle, setVisualStyle] = useState<VisualStyle>(initial.visualStyle ?? "template");
+  const [candidates, setCandidates] = useState<{ style: VisualStyle; url: string }[]>([]);
+  const [proposing, setProposing] = useState(false);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [status, setStatus] = useState<PostStatus>(initial.status);
@@ -86,14 +88,31 @@ export function PostModal({
     setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
   }
 
-  async function regenerateImage() {
-    const url = await generatePostGraphic({
-      category: graphicCategory,
-      headline: title || "Votre titre ici",
-      highlight: DEFAULT_HIGHLIGHT[graphicCategory],
-      visual: visualStyle,
-    });
-    setImageUrl(url);
+  async function proposeVisuals() {
+    setProposing(true);
+    try {
+      const base = { category: graphicCategory, headline: title || "Votre titre ici", highlight: DEFAULT_HIGHLIGHT[graphicCategory] };
+      const [tpl, photoA, photoB] = await Promise.all([
+        generatePostGraphic({ ...base, visual: "template" }),
+        generatePostGraphic({ ...base, visual: "photo" }),
+        generatePostGraphic({ ...base, visual: "photo" }),
+      ]);
+      const options: { style: VisualStyle; url: string }[] = [
+        { style: "template", url: tpl },
+        { style: "photo", url: photoA },
+        { style: "photo", url: photoB },
+      ];
+      setCandidates(options);
+      setImageUrl(options[0].url);
+      setVisualStyle(options[0].style);
+    } finally {
+      setProposing(false);
+    }
+  }
+
+  function pickCandidate(candidate: { style: VisualStyle; url: string }) {
+    setImageUrl(candidate.url);
+    setVisualStyle(candidate.style);
   }
 
   function categorySelector() {
@@ -202,19 +221,17 @@ export function PostModal({
               </label>
               {categorySelector()}
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Fond
-              </label>
-              {visualStyleSelector()}
-            </div>
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
                   Image (le titre y est affiché automatiquement)
                 </label>
-                <button onClick={regenerateImage} className="text-xs font-medium text-daimo-blue hover:underline">
-                  🎨 Générer l&apos;image
+                <button
+                  onClick={proposeVisuals}
+                  disabled={proposing}
+                  className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+                >
+                  {proposing ? "⏳ Génération…" : "🎲 Proposer des visuels"}
                 </button>
               </div>
               {imageUrl ? (
@@ -226,13 +243,32 @@ export function PostModal({
                 />
               ) : (
                 <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
-                  Aucune image, cliquez sur « Générer l&apos;image »
+                  Aucune image, cliquez sur « Proposer des visuels »
+                </div>
+              )}
+              {candidates.length > 0 && (
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {candidates.map((c, i) => (
+                    <button
+                      key={i}
+                      onClick={() => pickCandidate(c)}
+                      className={`relative overflow-hidden rounded-lg border-2 ${
+                        imageUrl === c.url ? "border-daimo-blue" : "border-transparent hover:border-slate-300"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={c.url} alt={c.style === "template" ? "Type PowerPoint" : "Photo"} className="aspect-[1200/630] w-full object-cover" />
+                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        {c.style === "template" ? "PowerPoint" : "Photo"}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
               <p className="mt-1 text-xs text-slate-400">
-                {visualStyle === "template"
-                  ? "Générée automatiquement aux couleurs Daïmo, avec le titre et une accroche affichés directement sur le visuel, 100% côté navigateur."
-                  : "Photo libre de droit choisie automatiquement selon le thème, avec le titre affiché par-dessus. Pour une photo garantie, utilisez plutôt le lien ci-dessous."}
+                Un visuel de type PowerPoint et deux photos de personnes en contexte sont proposés à chaque
+                clic : cliquez sur l&apos;une des vignettes pour la choisir. Tout est généré côté
+                navigateur, avec le titre affiché directement sur l&apos;image.
               </p>
             </div>
             <div>
