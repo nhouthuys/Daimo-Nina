@@ -6,7 +6,7 @@ articles, posts image + texte, et carrousels.
 ## Fonctionnalités
 
 - Vue calendrier (mois) et vue liste des posts programmés
-- Création / édition / suppression de posts, avec 3 formats : article, image + texte, carrousel
+- Création / édition / suppression de posts, avec 3 formats : article, image/photos réelles + texte, carrousel
 - Statut brouillon ou programmé
 - Charte graphique Daïmo intégrée (couleurs, typographies)
 - Les posts sont stockés dans le `localStorage` du navigateur (démo sans backend)
