@@ -154,7 +154,7 @@ export default function Home() {
             ))}
           </div>
           <p className="text-xs text-slate-400">
-            Typographies : Exo 2 (titres), Exo (texte courant) — Calibri en substitution.
+            Typographies : Exo 2 (titres), Exo (texte courant), Calibri en substitution.
           </p>
         </InfoModal>
       )}

@@ -23,7 +23,7 @@ export function PostBadge({
         onClick?.(e);
       }}
       className={`w-full truncate rounded-md px-2 py-1 text-left text-xs font-medium ${colors.bg} ${colors.text} hover:opacity-80`}
-      title={`${post.time} — ${post.title}`}
+      title={`${post.time} : ${post.title}`}
     >
       <span className="mr-1">{FORMAT_ICON[post.format]}</span>
       {!compact && <span className="mr-1 tabular-nums">{post.time}</span>}

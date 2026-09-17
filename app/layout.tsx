@@ -17,7 +17,7 @@ const exo2 = Exo_2({
 });
 
 export const metadata: Metadata = {
-  title: "Calendrier marketing — Daïmo",
+  title: "Calendrier marketing Daïmo",
   description: "Articles, images et carrousels programmés sur LinkedIn.",
 };
 

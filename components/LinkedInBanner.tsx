@@ -19,12 +19,12 @@ export function LinkedInBanner({ connected, onConnect }: LinkedInBannerProps) {
         <p className="text-sm text-slate-600">
           {connected ? (
             <>
-              Page LinkedIn <span className="font-medium text-slate-900">Daïmo</span> connectée — les
+              Page LinkedIn <span className="font-medium text-slate-900">Daïmo</span> connectée : les
               posts programmés seront publiés automatiquement.
             </>
           ) : (
             <>
-              Aucune page LinkedIn connectée — les posts programmés ne seront pas publiés.
+              Aucune page LinkedIn connectée : les posts programmés ne seront pas publiés.
             </>
           )}
         </p>

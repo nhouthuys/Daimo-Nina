@@ -11,6 +11,14 @@ export const GRAPHIC_CATEGORY_LABELS: Record<GraphicCategory, string> = {
   hiring: "Recrutement",
 };
 
+/** Background source for a generated visual: an illustrated brand template, or a real photo with people. */
+export type VisualStyle = "template" | "photo";
+
+export const VISUAL_STYLE_LABELS: Record<VisualStyle, string> = {
+  template: "Type PowerPoint",
+  photo: "Photo avec des personnes",
+};
+
 export interface CarouselSlide {
   id: string;
   caption: string;
@@ -26,6 +34,8 @@ export interface Post {
   slides?: CarouselSlide[];
   /** Visual theme applied to imageUrl/slides, kept so a manual regeneration stays consistent. */
   graphicCategory?: GraphicCategory;
+  /** Which background source the generator used, kept so a manual regeneration stays consistent. */
+  visualStyle?: VisualStyle;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   status: PostStatus;

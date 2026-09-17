@@ -1,4 +1,4 @@
-import { GraphicCategory } from "./types";
+import { GraphicCategory, VisualStyle } from "./types";
 
 const FONT_STACK = "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
@@ -6,12 +6,29 @@ interface Theme {
   gradient: [string, string];
   badgeLabel: string;
   accent: string;
+  /** Keywords used to fetch a matching real photo for the "photo" visual style. */
+  photoKeywords: string;
 }
 
 const THEMES: Record<GraphicCategory, Theme> = {
-  tip: { gradient: ["#394e9d", "#3fb5cc"], badgeLabel: "ASTUCE PROCESS", accent: "#3fb5cc" },
-  client: { gradient: ["#394e9d", "#65b22e"], badgeLabel: "CAS CLIENT", accent: "#65b22e" },
-  hiring: { gradient: ["#662d91", "#ec008c"], badgeLabel: "ON RECRUTE", accent: "#ec008c" },
+  tip: {
+    gradient: ["#394e9d", "#3fb5cc"],
+    badgeLabel: "ASTUCE PROCESS",
+    accent: "#3fb5cc",
+    photoKeywords: "office,team,business,computer",
+  },
+  client: {
+    gradient: ["#394e9d", "#65b22e"],
+    badgeLabel: "CAS CLIENT",
+    accent: "#65b22e",
+    photoKeywords: "meeting,handshake,business,office",
+  },
+  hiring: {
+    gradient: ["#662d91", "#ec008c"],
+    badgeLabel: "ON RECRUTE",
+    accent: "#ec008c",
+    photoKeywords: "team,office,people,coworkers",
+  },
 };
 
 // Real Daïmo brand assets extracted directly from the official graphic charter (not redrawn).
@@ -20,11 +37,12 @@ const LOCKUP_WHITE_SRC = "/daimo-logo-white.png"; // symbol + wordmark + baselin
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+function loadImage(src: string, crossOrigin?: "anonymous"): Promise<HTMLImageElement> {
   let cached = imageCache.get(src);
   if (!cached) {
     cached = new Promise((resolve, reject) => {
       const img = new window.Image();
+      if (crossOrigin) img.crossOrigin = crossOrigin;
       img.onload = () => resolve(img);
       img.onerror = reject;
       img.src = src;
@@ -32,6 +50,35 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     imageCache.set(src, cached);
   }
   return cached;
+}
+
+/**
+ * Builds a URL for a real, royalty-free stock photo matching the category, from a
+ * keyless photo service (no API key to configure). A random seed is appended so a
+ * different photo comes back each time instead of always the same cached one.
+ */
+function buildStockPhotoUrl(category: GraphicCategory, width: number, height: number): string {
+  const seed = Math.floor(Math.random() * 100000);
+  const keywords = THEMES[category].photoKeywords;
+  return `https://loremflickr.com/${width}/${height}/${keywords}?random=${seed}`;
+}
+
+/** Draws `img` covering the full `w`×`h` box, cropping overflow like CSS `object-fit: cover`. */
+function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number) {
+  const imgRatio = img.width / img.height;
+  const boxRatio = w / h;
+  let sx = 0;
+  let sy = 0;
+  let sw = img.width;
+  let sh = img.height;
+  if (imgRatio > boxRatio) {
+    sw = img.height * boxRatio;
+    sx = (img.width - sw) / 2;
+  } else {
+    sh = img.width / boxRatio;
+    sy = (img.height - sh) / 2;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -94,19 +141,22 @@ export interface GraphicOptions {
   /** When set, renders the square "carousel slide" layout with a "n / total" progress badge instead of the category badge. */
   slideIndex?: number;
   slideCount?: number;
+  /** "template" (default): illustrated brand gradient. "photo": a real stock photo with people as the background. */
+  visual?: VisualStyle;
 }
 
 /**
  * Renders a full, ready-to-post LinkedIn graphic entirely client-side via <canvas>:
- * on-brand gradient, the real Daïmo mark/lockup images, a category badge, the real
- * headline text and an optional highlight pill. Returns a JPEG data URL. No network
- * call — every pixel is drawn here, so this scales to any number of topics/roles.
+ * either the on-brand gradient template, or a real photo background, plus the real
+ * Daïmo mark/lockup images, a category badge, the real headline text and an optional
+ * highlight pill. Returns a JPEG data URL.
  */
 export async function generatePostGraphic(opts: GraphicOptions): Promise<string> {
   const isSlide = opts.slideIndex != null && opts.slideCount != null;
   const width = opts.width ?? (isSlide ? 1080 : 1200);
   const height = opts.height ?? (isSlide ? 1080 : 630);
   const theme = THEMES[opts.category];
+  const visual = opts.visual ?? "template";
 
   const [markImg, lockupImg] = await Promise.all([loadImage(MARK_WHITE_SRC), loadImage(LOCKUP_WHITE_SRC)]);
 
@@ -116,26 +166,41 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
 
-  // 1. Brand gradient background.
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, theme.gradient[0]);
-  gradient.addColorStop(1, theme.gradient[1]);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  if (visual === "photo") {
+    try {
+      const photoUrl = buildStockPhotoUrl(opts.category, width, height);
+      const photoImg = await loadImage(photoUrl, "anonymous");
+      // 1. Real photo, cropped to fill the canvas.
+      drawImageCover(ctx, photoImg, width, height);
+      // 2. Stronger dark scrim — photos need more contrast than a flat gradient for the text to read.
+      ctx.fillStyle = "rgba(6, 10, 24, 0.5)";
+      ctx.fillRect(0, 0, width, height);
+    } catch {
+      // The stock photo service is unreachable or blocked its cross-origin canvas read — fall back to the template.
+      return generatePostGraphic({ ...opts, visual: "template" });
+    }
+  } else {
+    // 1. Brand gradient background.
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, theme.gradient[0]);
+    gradient.addColorStop(1, theme.gradient[1]);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
 
-  // 2. The real Daïmo mark, large and restrained, bleeding off the top-right corner.
-  const bleedH = height * 1.55;
-  const bleedW = bleedH * (markImg.width / markImg.height);
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  ctx.translate(width * 0.86, height * -0.02);
-  ctx.rotate(-0.2);
-  ctx.drawImage(markImg, -bleedW / 2, -bleedH / 2, bleedW, bleedH);
-  ctx.restore();
+    // 2. The real Daïmo mark, large and restrained, bleeding off the top-right corner.
+    const bleedH = height * 1.55;
+    const bleedW = bleedH * (markImg.width / markImg.height);
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.translate(width * 0.86, height * -0.02);
+    ctx.rotate(-0.2);
+    ctx.drawImage(markImg, -bleedW / 2, -bleedH / 2, bleedW, bleedH);
+    ctx.restore();
 
-  // 3. Dark scrim so white text stays legible on any part of the gradient.
-  ctx.fillStyle = "rgba(8, 12, 28, 0.32)";
-  ctx.fillRect(0, 0, width, height);
+    // 3. Dark scrim so white text stays legible on any part of the gradient.
+    ctx.fillStyle = "rgba(8, 12, 28, 0.32)";
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const padding = Math.round(width * 0.065);
   ctx.textBaseline = "top";
@@ -214,5 +279,11 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
     ctx.fillText(site, width - padding - siteWidth, height - padding + lockupH - 21);
   }
 
-  return canvas.toDataURL("image/jpeg", 0.9);
+  try {
+    return canvas.toDataURL("image/jpeg", 0.9);
+  } catch {
+    // A cross-origin photo without permissive CORS headers taints the canvas — fall back to the template.
+    if (visual === "photo") return generatePostGraphic({ ...opts, visual: "template" });
+    throw new Error("Impossible de générer l'image du post.");
+  }
 }

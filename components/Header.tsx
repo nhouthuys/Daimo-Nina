@@ -6,7 +6,7 @@ export function Header() {
       <DaimoMark className="h-9 w-auto mt-1 shrink-0" />
       <div>
         <h1 className="font-heading text-2xl md:text-3xl font-bold text-daimo-blue">
-          Calendrier marketing — Daïmo
+          Calendrier marketing Daïmo
         </h1>
         <p className="mt-1 text-sm text-daimo-gray">
           Articles, images et carrousels programmés sur LinkedIn.

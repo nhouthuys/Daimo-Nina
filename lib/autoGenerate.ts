@@ -1,18 +1,22 @@
 import { generateContent, pickWeightedFormat } from "./generate";
 import { generatePostGraphic } from "./graphic";
-import { Post } from "./types";
+import { Post, VisualStyle } from "./types";
+
+function pickVisualStyle(): VisualStyle {
+  return Math.random() < 0.6 ? "template" : "photo";
+}
 
 /**
  * Produces a full, ready-to-review post: real generated copy (title + content,
  * or slide captions for a carousel) plus a real generated graphic — headline and
- * highlight drawn on an on-brand canvas background — for formats that need one.
- * Everything runs locally in the browser, no external API involved, so this only
- * works client-side. All slides of a carousel share the same category/theme so
- * the set reads as one consistent design instead of a random grab-bag of colors.
+ * highlight drawn on either the brand template or a real photo background — for
+ * formats that need one. All slides of a carousel share the same category/theme
+ * and visual style so the set reads as one consistent design.
  */
 export async function createGeneratedPost(date: string, time: string): Promise<Post> {
   const format = pickWeightedFormat();
   const generated = generateContent(format);
+  const visualStyle = pickVisualStyle();
   const now = new Date().toISOString();
 
   const post: Post = {
@@ -22,6 +26,7 @@ export async function createGeneratedPost(date: string, time: string): Promise<P
     content: generated.content,
     slides: generated.slides,
     graphicCategory: generated.category,
+    visualStyle,
     date,
     time,
     status: "draft",
@@ -34,6 +39,7 @@ export async function createGeneratedPost(date: string, time: string): Promise<P
       category: generated.category,
       headline: generated.title,
       highlight: generated.highlight,
+      visual: visualStyle,
     });
   }
 
@@ -47,6 +53,7 @@ export async function createGeneratedPost(date: string, time: string): Promise<P
           headline: slide.caption,
           slideIndex: i + 1,
           slideCount,
+          visual: visualStyle,
         }),
       }))
     );

@@ -15,12 +15,12 @@ const TOPICS: Topic[] = [
     painPoint: "Des heures perdues chaque semaine en saisie manuelle.",
     benefit: "un traitement automatisé en quelques clics",
     stat: "jusqu'à 70% de temps gagné sur le traitement",
-    statShort: "-70% de temps de traitement",
+    statShort: "70% de temps gagné",
     hashtag: "#Facturation",
   },
   {
     name: "l'onboarding des nouveaux clients",
-    painPoint: "Des informations éparpillées entre emails, fichiers Excel et post-its.",
+    painPoint: "Des informations éparpillées entre emails, fichiers Excel et notes volantes.",
     benefit: "un parcours fluide et traçable de bout en bout",
     stat: "une mise en route deux fois plus rapide",
     statShort: "2x plus rapide",
@@ -136,7 +136,7 @@ const HIRING_ROLES: HiringRole[] = [
 
 const HIRING_TITLES = [
   "On recrute : {role}",
-  "Daïmo agrandit son équipe — {role}",
+  "Daïmo agrandit son équipe : {role}",
   "{role}, ça vous parle ?",
   "Rejoignez l'équipe Daïmo en tant que {role}",
 ];
