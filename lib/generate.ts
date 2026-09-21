@@ -1,107 +1,107 @@
 import { CarouselSlide, GraphicCategory, PostFormat } from "./types";
 
 interface Topic {
-  name: string; // ex: "la gestion des factures"
-  painPoint: string; // ex: "Des heures perdues chaque semaine en saisie manuelle."
-  benefit: string; // ex: "un traitement automatisé en quelques clics"
-  stat: string; // full sentence, used inside body copy — ex: "jusqu'à 70% de temps gagné sur le traitement"
-  statShort: string; // punchy standalone phrase for the graphic's highlight pill — ex: "-70% de temps de traitement"
+  name: string; // ex: "invoice management"
+  painPoint: string; // ex: "Hours lost every week on manual data entry."
+  benefit: string; // ex: "automated processing in just a few clicks"
+  stat: string; // full sentence, used inside body copy — ex: "up to 70% time saved on processing"
+  statShort: string; // punchy standalone phrase for the graphic's highlight pill — ex: "70% time saved"
   hashtag: string;
 }
 
 const TOPICS: Topic[] = [
   {
-    name: "la gestion des factures",
-    painPoint: "Des heures perdues chaque semaine en saisie manuelle.",
-    benefit: "un traitement automatisé en quelques clics",
-    stat: "jusqu'à 70% de temps gagné sur le traitement",
-    statShort: "70% de temps gagné",
-    hashtag: "#Facturation",
+    name: "invoice management",
+    painPoint: "Hours lost every week on manual data entry.",
+    benefit: "automated processing in just a few clicks",
+    stat: "up to 70% time saved on processing",
+    statShort: "70% time saved",
+    hashtag: "#Invoicing",
   },
   {
-    name: "l'onboarding des nouveaux clients",
-    painPoint: "Des informations éparpillées entre emails, fichiers Excel et notes volantes.",
-    benefit: "un parcours fluide et traçable de bout en bout",
-    stat: "une mise en route deux fois plus rapide",
-    statShort: "2x plus rapide",
-    hashtag: "#OnboardingClient",
+    name: "new client onboarding",
+    painPoint: "Information scattered across emails, spreadsheets, and sticky notes.",
+    benefit: "a smooth, end-to-end traceable journey",
+    stat: "onboarding twice as fast",
+    statShort: "2x faster",
+    hashtag: "#ClientOnboarding",
   },
   {
-    name: "le suivi des stocks",
-    painPoint: "Des ruptures ou des surstocks difficiles à anticiper.",
-    benefit: "une visibilité en temps réel sur tous vos flux",
-    stat: "moins de 2% d'écarts de stock",
-    statShort: "<2% d'écarts de stock",
+    name: "inventory tracking",
+    painPoint: "Stockouts or overstocking that are hard to predict.",
+    benefit: "real-time visibility across all your flows",
+    stat: "less than 2% stock discrepancies",
+    statShort: "<2% stock discrepancies",
     hashtag: "#SupplyChain",
   },
   {
-    name: "la conformité RGPD",
-    painPoint: "Des process manuels impossibles à auditer sereinement.",
-    benefit: "une traçabilité automatique de chaque étape",
-    stat: "des audits deux fois plus rapides",
-    statShort: "Audits 2x plus rapides",
-    hashtag: "#RGPD",
+    name: "GDPR compliance",
+    painPoint: "Manual processes that are impossible to audit with confidence.",
+    benefit: "automatic traceability at every step",
+    stat: "audits twice as fast",
+    statShort: "Audits 2x faster",
+    hashtag: "#GDPR",
   },
   {
-    name: "la relation client",
-    painPoint: "Des demandes qui se perdent entre plusieurs outils.",
-    benefit: "un point d'entrée unique, connecté à vos systèmes",
-    stat: "un taux de satisfaction client en hausse de 30%",
-    statShort: "+30% de satisfaction client",
-    hashtag: "#RelationClient",
+    name: "customer relationships",
+    painPoint: "Requests that get lost between multiple tools.",
+    benefit: "a single entry point, connected to your systems",
+    stat: "customer satisfaction up 30%",
+    statShort: "+30% customer satisfaction",
+    hashtag: "#CustomerExperience",
   },
   {
-    name: "la gestion des congés et absences",
-    painPoint: "Des tableaux partagés jamais à jour et des validations par email.",
-    benefit: "une demande, une validation, une mise à jour automatique du planning",
-    stat: "zéro double saisie pour les équipes RH",
-    statShort: "Zéro double saisie RH",
-    hashtag: "#RH",
+    name: "leave and absence management",
+    painPoint: "Shared spreadsheets that are never up to date and approvals stuck in email.",
+    benefit: "one request, one approval, an automatically updated schedule",
+    stat: "zero double data entry for HR teams",
+    statShort: "Zero double entry for HR",
+    hashtag: "#HR",
   },
   {
-    name: "le reporting mensuel",
-    painPoint: "Des heures passées à copier des chiffres d'un outil à l'autre.",
-    benefit: "des tableaux de bord générés automatiquement",
-    stat: "un reporting prêt en quelques minutes au lieu de plusieurs jours",
-    statShort: "Reporting en quelques minutes",
+    name: "monthly reporting",
+    painPoint: "Hours spent copying numbers from one tool to another.",
+    benefit: "dashboards generated automatically",
+    stat: "a report ready in minutes instead of days",
+    statShort: "Reports ready in minutes",
     hashtag: "#DataDriven",
   },
 ];
 
 const ARTICLE_INTROS = [
-  "{painPoint} Chez Daïmo, on voit ce constat presque toutes les semaines chez nos clients pour {topic}.",
-  "On l'entend souvent : « on n'a pas le temps de digitaliser {topic}, on est déjà débordés ». {painPoint}",
-  "{painPoint} C'est le point de départ de beaucoup de nos missions autour de {topic}.",
+  "{painPoint} At Daïmo, we see this almost every week with our clients around {topic}.",
+  "We hear it a lot: ‘we don't have time to digitize {topic}, we're already stretched thin.’ {painPoint}",
+  "{painPoint} That's the starting point for a lot of our work on {topic}.",
 ];
 
 const ARTICLE_BODIES = [
-  "Notre approche est simple : partir des irritants du terrain, puis mettre en place {benefit}. Résultat chez nos clients : {stat}.",
-  "Concrètement, on cartographie le process existant avec les équipes, puis on automatise ce qui peut l'être pour obtenir {benefit}. Résultat mesuré chez nos clients : {stat}.",
-  "On commence toujours petit : un pilote sur un périmètre restreint, pour arriver rapidement à {benefit}. Chez nos derniers clients, ça s'est traduit par {stat}.",
+  "Our approach is simple: start from the friction on the ground, then put in place {benefit}. Result for our clients: {stat}.",
+  "In practice, we map the existing process with the teams, then automate what can be automated to get {benefit}. Measured result for our clients: {stat}.",
+  "We always start small: a pilot on a limited scope, to quickly reach {benefit}. For our latest clients, that meant {stat}.",
 ];
 
 const ARTICLE_CTAS = [
-  "Et vous, où en êtes-vous sur {topic} ? On en discute ? 👇",
-  "Vous vous reconnaissez dans ce constat ? Parlons-en.",
-  "Ce sujet vous concerne ? L'équipe Daïmo est disponible pour en discuter.",
+  "Where do you stand on {topic}? Let's talk about it 👇",
+  "Does this sound familiar? Let's talk.",
+  "Is this relevant to you? The Daïmo team is happy to discuss it.",
 ];
 
 const IMAGE_CAPTIONS = [
-  "{topicCap}, sans la charge manuelle. {benefitCap}. {statCap}. 💡",
-  "On a aidé un client à repenser {topic}. {benefitCap} → {stat}. 🚀",
-  "{painPoint} Notre réponse : {benefitCap}. {statCap}. ⚙️",
+  "{topicCap}, without the manual workload. {benefitCap}. {statCap}. 💡",
+  "We helped a client rethink {topic}. {benefitCap} → {stat}. 🚀",
+  "{painPoint} Our answer: {benefitCap}. {statCap}. ⚙️",
 ];
 
 const TITLE_TEMPLATES = [
-  "{topicCap} : le levier caché de votre croissance",
-  "3 minutes pour repenser {topic}",
-  "{topicCap}, encore un frein pour vos équipes ?",
-  "Comment on a transformé {topic} chez un client",
-  "{topicCap} : {stat}",
+  "{topicCap}: the hidden lever for your growth",
+  "3 minutes to rethink {topic}",
+  "{topicCap}, still a bottleneck for your teams?",
+  "How we helped a client transform {topic}",
+  "{topicCap}: {stat}",
 ];
 
 interface HiringRole {
-  title: string; // ex: "Consultant·e Process IT"
+  title: string; // ex: "Process IT Consultant"
   mission: string;
   profile: string;
   hashtag: string;
@@ -109,70 +109,66 @@ interface HiringRole {
 
 const HIRING_ROLES: HiringRole[] = [
   {
-    title: "Consultant·e Process IT",
-    mission: "accompagner nos clients dans la digitalisation de leurs process métier",
-    profile: "vous aimez comprendre un métier en profondeur avant de proposer une solution",
-    hashtag: "#Recrutement",
+    title: "Process IT Consultant",
+    mission: "help our clients digitize their business processes",
+    profile: "you like to fully understand a business before proposing a solution",
+    hashtag: "#Hiring",
   },
   {
-    title: "Développeur·se intégration",
-    mission: "connecter les outils de nos clients entre eux pour fluidifier leurs flux",
-    profile: "vous êtes à l'aise pour jongler entre plusieurs technologies et API",
+    title: "Integration Developer",
+    mission: "connect our clients' tools together to streamline their workflows",
+    profile: "you're comfortable juggling multiple technologies and APIs",
     hashtag: "#DevJobs",
   },
   {
-    title: "Chef·fe de projet digitalisation",
-    mission: "piloter des projets de transformation de bout en bout, avec des équipes terrain",
-    profile: "vous savez fédérer des équipes autour d'un objectif commun",
-    hashtag: "#Recrutement",
+    title: "Digitalization Project Manager",
+    mission: "lead transformation projects end to end, working closely with teams on the ground",
+    profile: "you know how to rally teams around a shared goal",
+    hashtag: "#Hiring",
   },
   {
     title: "Business Analyst",
-    mission: "cartographier les process existants et identifier les meilleurs leviers d'automatisation",
-    profile: "vous avez l'œil pour repérer ce qui ralentit une organisation",
+    mission: "map existing processes and identify the best automation opportunities",
+    profile: "you have an eye for spotting what's slowing an organization down",
     hashtag: "#BusinessAnalyst",
   },
 ];
 
 const HIRING_TITLES = [
-  "On recrute : {role}",
-  "Daïmo agrandit son équipe : {role}",
-  "{role}, ça vous parle ?",
-  "Rejoignez l'équipe Daïmo en tant que {role}",
+  "We're hiring: {role}",
+  "Daïmo is growing its team: {role}",
+  "{role}, does that sound like you?",
+  "Join the Daïmo team as {role}",
 ];
 
 const HIRING_BODIES = [
-  "Chez Daïmo, notre {role} va {mission}. On cherche quelqu'un pour qui {profile}.\n\nEnvie de nous rejoindre ? Envoyez-nous votre CV, on en discute. 📩",
-  "Nouvelle opportunité chez Daïmo : {role}.\n\nVotre mission : {mission}. Le profil qu'on recherche : {profile}.\n\nCandidature ouverte dès maintenant. 🚀",
-  "On cherche notre futur·e {role} pour {mission}.\n\nSi {profile}, ce poste est pour vous. Parlons-en ! 🤝",
+  "At Daïmo, our {role} will {mission}. We're looking for someone who {profile}.\n\nWant to join us? Send us your CV, let's talk. 📩",
+  "New opportunity at Daïmo: {role}.\n\nYour mission: {mission}. The profile we're looking for: {profile}.\n\nApplications open now. 🚀",
+  "We're looking for our next {role} to {mission}.\n\nIf {profile}, this role is for you. Let's talk! 🤝",
 ];
 
 // Generic phrasing used to build a post around a theme the user typed themselves —
 // kept deliberately non-specific (no invented numbers or claims) since there is no
 // AI backend here to actually research an arbitrary topic.
 const GENERIC_PAIN_POINTS = [
-  "C'est un sujet qui revient souvent chez nos clients.",
-  "Beaucoup d'équipes butent encore là-dessus au quotidien.",
-  "C'est rarement simple à gérer sans y consacrer trop de temps.",
+  "This is a topic that comes up often with our clients.",
+  "Many teams still struggle with this on a daily basis.",
+  "It's rarely simple to manage without spending too much time on it.",
 ];
 
 const GENERIC_BENEFITS = [
-  "une approche sur mesure, pensée avec vos équipes",
-  "un accompagnement concret, étape par étape",
-  "une solution simple à mettre en place rapidement",
+  "a tailored approach, built together with your teams",
+  "hands-on support, step by step",
+  "a simple solution you can roll out quickly",
 ];
 
 const GENERIC_STATS = [
-  "des résultats visibles dès les premières semaines",
-  "un vrai gain de temps pour les équipes",
-  "une organisation plus sereine au quotidien",
+  "visible results within the first few weeks",
+  "real time savings for the team",
+  "a calmer, more organized day to day",
 ];
 
-const GENERIC_STATS_SHORT = [
-  "Résultats visibles rapidement",
-  "Un vrai gain de temps",
-  "Plus de sérénité au quotidien",
-];
+const GENERIC_STATS_SHORT = ["Visible results fast", "Real time savings", "A calmer day to day"];
 
 function slugifyHashtag(theme: string): string {
   const cleaned = theme
@@ -251,17 +247,17 @@ function pickCategory(): GraphicCategory {
 function generateHiring(format: PostFormat): GeneratedContent {
   const role = pick(HIRING_ROLES);
   const title = fillHiring(pick(HIRING_TITLES), role);
-  const highlight = "Postulez dès maintenant →";
+  const highlight = "Apply today →";
 
   if (format === "carousel") {
     const slides: CarouselSlide[] = [
       { id: crypto.randomUUID(), caption: title },
-      { id: crypto.randomUUID(), caption: `Votre mission : ${capitalize(role.mission)}.` },
-      { id: crypto.randomUUID(), caption: `Le profil recherché : ${role.profile}.` },
-      { id: crypto.randomUUID(), caption: "Une équipe à taille humaine, des projets concrets." },
-      { id: crypto.randomUUID(), caption: "Envoyez-nous votre CV → on en discute ! 📩" },
+      { id: crypto.randomUUID(), caption: `Your mission: ${capitalize(role.mission)}.` },
+      { id: crypto.randomUUID(), caption: `The profile we're looking for: ${role.profile}.` },
+      { id: crypto.randomUUID(), caption: "A close-knit team, real projects." },
+      { id: crypto.randomUUID(), caption: "Send us your CV → let's talk! 📩" },
     ];
-    const content = `On recrute un·e ${role.title} chez Daïmo. ${role.hashtag} #Recrutement`;
+    const content = `We're hiring a ${role.title} at Daïmo. ${role.hashtag} #Hiring`;
     return { title, content, slides, hashtag: role.hashtag, category: "hiring", highlight };
   }
 
@@ -292,11 +288,11 @@ function generateFromTopic(format: PostFormat, topic: Topic, category: GraphicCa
   const slides: CarouselSlide[] = [
     { id: crypto.randomUUID(), caption: title },
     { id: crypto.randomUUID(), caption: capitalize(topic.painPoint) },
-    { id: crypto.randomUUID(), caption: `Notre approche : ${topic.benefit}.` },
-    { id: crypto.randomUUID(), caption: `Résultat : ${topic.stat}.` },
-    { id: crypto.randomUUID(), caption: "Envie d'en discuter ? Contactez l'équipe Daïmo →" },
+    { id: crypto.randomUUID(), caption: `Our approach: ${topic.benefit}.` },
+    { id: crypto.randomUUID(), caption: `Result: ${topic.stat}.` },
+    { id: crypto.randomUUID(), caption: "Want to talk about it? Contact the Daïmo team →" },
   ];
-  const content = `Un carrousel pour explorer ${topic.name} et comment y remédier. ${topic.hashtag} #ProcessIT`;
+  const content = `A carousel exploring ${topic.name} and how to fix it. ${topic.hashtag} #ProcessIT`;
   return { title, content, slides, hashtag: topic.hashtag, category, highlight };
 }
 
@@ -317,4 +313,3 @@ export function generateContent(format: PostFormat, customTheme?: string): Gener
   if (category === "hiring") return generateHiring(format);
   return generateFromTopic(format, pick(TOPICS), category);
 }
-

@@ -20,9 +20,9 @@ function newSlide(): CarouselSlide {
 }
 
 const DEFAULT_HIGHLIGHT: Record<GraphicCategory, string> = {
-  tip: "Gagnez du temps sur vos process →",
-  client: "Résultats mesurés chez nos clients →",
-  hiring: "Postulez dès maintenant →",
+  tip: "Save time on your processes →",
+  client: "Real results from our clients →",
+  hiring: "Apply today →",
 };
 
 export function PostModal({
@@ -80,7 +80,7 @@ export function PostModal({
   async function regenerateSlideImage(id: string, caption: string) {
     const url = await generatePostGraphic({
       category: graphicCategory,
-      headline: caption || "Votre texte ici",
+      headline: caption || "Your text here",
       slideIndex: slides.findIndex((s) => s.id === id) + 1,
       slideCount: slides.length,
       visual: visualStyle,
@@ -91,7 +91,7 @@ export function PostModal({
   async function proposeVisuals() {
     setProposing(true);
     try {
-      const base = { category: graphicCategory, headline: title || "Votre titre ici", highlight: DEFAULT_HIGHLIGHT[graphicCategory] };
+      const base = { category: graphicCategory, headline: title || "Your title here", highlight: DEFAULT_HIGHLIGHT[graphicCategory] };
       const [tpl, photoA, photoB] = await Promise.all([
         generatePostGraphic({ ...base, visual: "template" }),
         generatePostGraphic({ ...base, visual: "photo" }),

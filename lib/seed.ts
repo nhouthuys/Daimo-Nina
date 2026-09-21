@@ -11,31 +11,32 @@ interface CalendarEntry {
   note?: string;
 }
 
-// Sourced from the calendrier LinkedIn (Calendrier_LinkedIn.xlsx) fourni : thèmes, dates et
-// formats prévus. Le détail réel de chaque sujet (mission AFCN, approche BBS, "Long Gakki",
-// salon à Ecolys…) n'est connu que de Daïmo : chaque post est donc préparé comme un brouillon
-// à compléter, plutôt que rempli avec un texte générique qui sonnerait faux ou inventé.
+// Sourced from the client's own LinkedIn planning spreadsheet (Calendrier_LinkedIn.xlsx):
+// themes, dates and planned formats. The real specifics of each topic (AFCN mission, BBS
+// approach, "Long Gakki", the Ecolys trade show…) are only known to Daïmo, so each post is
+// prepared as a clearly-marked draft rather than filled with generic text that would sound
+// made up.
 const CALENDAR_ENTRIES: CalendarEntry[] = [
   {
     date: "2026-09-21",
     format: "article",
     category: "client",
-    title: "Notre mission pour l'AFCN",
+    title: "Our mission for the AFCN",
     content:
-      "🚧 Brouillon à compléter : décrivez ici la mission menée pour l'AFCN (contexte, enjeux, résultat).\n\nStatut indiqué dans votre calendrier : à valider.",
+      "🚧 Draft to complete: describe the mission carried out for the AFCN (context, challenges, outcome).\n\nStatus shown in your calendar: to be validated.",
   },
   {
     date: "2026-10-05",
     format: "carousel",
     category: "tip",
-    title: "Notre approche BBS",
-    content: "🚧 Carrousel à compléter : présentez votre approche BBS, étape par étape.",
+    title: "Our BBS approach",
+    content: "🚧 Carousel to complete: walk through your BBS approach, step by step.",
     slides: [
-      "Notre approche BBS",
-      "Slide à compléter : en quoi consiste votre approche BBS ?",
-      "Slide à compléter : quels bénéfices concrets pour vos clients ?",
-      "Slide à compléter : un exemple ou un résultat chez un client ?",
-      "Envie d'en discuter ? Contactez l'équipe Daïmo →",
+      "Our BBS approach",
+      "Slide to complete: what does your BBS approach involve?",
+      "Slide to complete: what concrete benefits for your clients?",
+      "Slide to complete: an example or result from a client?",
+      "Want to talk about it? Contact the Daïmo team →",
     ],
   },
   {
@@ -43,24 +44,24 @@ const CALENDAR_ENTRIES: CalendarEntry[] = [
     format: "image",
     category: "tip",
     title: "Long Gakki",
-    content: "🚧 Brouillon à compléter : précisez le sujet exact autour de « Long Gakki » pour ce post.",
+    content: "🚧 Draft to complete: specify the exact subject around “Long Gakki” for this post.",
   },
   {
     date: "2026-10-19",
     format: "article",
     category: "client",
-    title: "Daïmo fête ses 5 ans !",
+    title: "Daïmo turns 5!",
     content:
-      "🎉 Cette année, Daïmo fête ses 5 ans !\n\n🚧 Brouillon à compléter : le message que vous voulez partager pour cet anniversaire (rétrospective, remerciements à l'équipe et aux clients…).",
-    note: "Format prévu au calendrier : vidéo. Cet outil ne génère pas de vidéo, à produire et publier séparément.",
+      "🎉 This year, Daïmo turns 5!\n\n🚧 Draft to complete: the message you want to share for this anniversary (retrospective, thanks to the team and clients…).",
+    note: "Format planned in the calendar: video. This tool doesn't generate video, to be produced and published separately.",
   },
   {
     date: "2026-11-09",
     format: "image",
     category: "client",
-    title: "Retrouvez-nous au salon à Ecolys",
+    title: "Come see us at the Ecolys trade show",
     content:
-      "🚧 Brouillon à compléter : dates du salon, emplacement de votre stand, ce que les visiteurs peuvent y découvrir.",
+      "🚧 Draft to complete: trade show dates, your booth location, what visitors can discover there.",
   },
 ];
 
@@ -75,7 +76,7 @@ export async function buildCalendarSeedPosts(): Promise<Post[]> {
   const posts: Post[] = [];
 
   for (const entry of CALENDAR_ENTRIES) {
-    const highlight = "Contactez l'équipe Daïmo →";
+    const highlight = "Contact the Daïmo team →";
     const post: Post = {
       id: crypto.randomUUID(),
       format: entry.format,

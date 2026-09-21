@@ -6,9 +6,9 @@ export type PostStatus = "draft" | "scheduled" | "published";
 export type GraphicCategory = "tip" | "client" | "hiring";
 
 export const GRAPHIC_CATEGORY_LABELS: Record<GraphicCategory, string> = {
-  tip: "Astuce process",
-  client: "Cas client",
-  hiring: "Recrutement",
+  tip: "Process tip",
+  client: "Client story",
+  hiring: "Hiring",
 };
 
 /** Background source for a generated visual: an illustrated brand template, or a real photo with people. */

@@ -13,19 +13,19 @@ interface Theme {
 const THEMES: Record<GraphicCategory, Theme> = {
   tip: {
     gradient: ["#394e9d", "#3fb5cc"],
-    badgeLabel: "ASTUCE PROCESS",
+    badgeLabel: "PROCESS TIP",
     accent: "#3fb5cc",
     photoKeywords: "office,team,business,computer",
   },
   client: {
     gradient: ["#394e9d", "#65b22e"],
-    badgeLabel: "CAS CLIENT",
+    badgeLabel: "CLIENT STORY",
     accent: "#65b22e",
     photoKeywords: "meeting,handshake,business,office",
   },
   hiring: {
     gradient: ["#662d91", "#ec008c"],
-    badgeLabel: "ON RECRUTE",
+    badgeLabel: "WE'RE HIRING",
     accent: "#ec008c",
     photoKeywords: "team,office,people,coworkers",
   },
@@ -284,6 +284,6 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
   } catch {
     // A cross-origin photo without permissive CORS headers taints the canvas — fall back to the template.
     if (visual === "photo") return generatePostGraphic({ ...opts, visual: "template" });
-    throw new Error("Impossible de générer l'image du post.");
+    throw new Error("Unable to generate the post image.");
   }
 }
