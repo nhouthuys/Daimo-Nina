@@ -1,56 +1,124 @@
-import { Post } from "./types";
-import { toISODate } from "./date";
+import { CarouselSlide, GraphicCategory, Post, PostFormat } from "./types";
+import { generatePostGraphic } from "./graphic";
 
-function dateInCurrentMonth(day: number): string {
-  const now = new Date();
-  return toISODate(new Date(now.getFullYear(), now.getMonth(), day));
+interface CalendarEntry {
+  date: string; // YYYY-MM-DD
+  format: PostFormat;
+  category: GraphicCategory;
+  title: string;
+  content: string;
+  slides?: string[];
+  note?: string;
 }
 
-export function buildSeedPosts(): Post[] {
+// Sourced from the calendrier LinkedIn (Calendrier_LinkedIn.xlsx) fourni : thèmes, dates et
+// formats prévus. Le détail réel de chaque sujet (mission AFCN, approche BBS, "Long Gakki",
+// salon à Ecolys…) n'est connu que de Daïmo : chaque post est donc préparé comme un brouillon
+// à compléter, plutôt que rempli avec un texte générique qui sonnerait faux ou inventé.
+const CALENDAR_ENTRIES: CalendarEntry[] = [
+  {
+    date: "2026-09-21",
+    format: "article",
+    category: "client",
+    title: "Notre mission pour l'AFCN",
+    content:
+      "🚧 Brouillon à compléter : décrivez ici la mission menée pour l'AFCN (contexte, enjeux, résultat).\n\nStatut indiqué dans votre calendrier : à valider.",
+  },
+  {
+    date: "2026-10-05",
+    format: "carousel",
+    category: "tip",
+    title: "Notre approche BBS",
+    content: "🚧 Carrousel à compléter : présentez votre approche BBS, étape par étape.",
+    slides: [
+      "Notre approche BBS",
+      "Slide à compléter : en quoi consiste votre approche BBS ?",
+      "Slide à compléter : quels bénéfices concrets pour vos clients ?",
+      "Slide à compléter : un exemple ou un résultat chez un client ?",
+      "Envie d'en discuter ? Contactez l'équipe Daïmo →",
+    ],
+  },
+  {
+    date: "2026-10-12",
+    format: "image",
+    category: "tip",
+    title: "Long Gakki",
+    content: "🚧 Brouillon à compléter : précisez le sujet exact autour de « Long Gakki » pour ce post.",
+  },
+  {
+    date: "2026-10-19",
+    format: "article",
+    category: "client",
+    title: "Daïmo fête ses 5 ans !",
+    content:
+      "🎉 Cette année, Daïmo fête ses 5 ans !\n\n🚧 Brouillon à compléter : le message que vous voulez partager pour cet anniversaire (rétrospective, remerciements à l'équipe et aux clients…).",
+    note: "Format prévu au calendrier : vidéo. Cet outil ne génère pas de vidéo, à produire et publier séparément.",
+  },
+  {
+    date: "2026-11-09",
+    format: "image",
+    category: "client",
+    title: "Retrouvez-nous au salon à Ecolys",
+    content:
+      "🚧 Brouillon à compléter : dates du salon, emplacement de votre stand, ce que les visiteurs peuvent y découvrir.",
+  },
+];
+
+/**
+ * Builds the initial calendar from the themes/dates/formats provided in the client's
+ * own planning spreadsheet. Titles and visuals are ready; body copy is left as a
+ * clearly-marked draft since the real specifics of each topic are only known to Daïmo.
+ * Visual generation runs client-side, so this only works in the browser.
+ */
+export async function buildCalendarSeedPosts(): Promise<Post[]> {
   const now = new Date().toISOString();
-  return [
-    {
-      id: "seed-1",
-      format: "article",
-      title: "Pourquoi automatiser vos process métier en 2026",
-      content:
-        "Chez Daïmo, on accompagne les entreprises qui veulent gagner du temps sur leurs process. Dans cet article, on partage 3 leviers concrets pour démarrer.",
-      date: dateInCurrentMonth(3),
+  const posts: Post[] = [];
+
+  for (const entry of CALENDAR_ENTRIES) {
+    const highlight = "Contactez l'équipe Daïmo →";
+    const post: Post = {
+      id: crypto.randomUUID(),
+      format: entry.format,
+      title: entry.title,
+      content: entry.note ? `${entry.content}\n\n${entry.note}` : entry.content,
+      graphicCategory: entry.category,
+      visualStyle: "template",
+      date: entry.date,
       time: "09:00",
-      status: "scheduled",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: "seed-2",
-      format: "image",
-      title: "Bienvenue à notre nouvelle recrue !",
-      content:
-        "L'équipe Daïmo s'agrandit 🎉 Toute l'équipe souhaite la bienvenue à notre nouveau consultant process IT.",
-      imageUrl: "",
-      date: dateInCurrentMonth(9),
-      time: "11:30",
-      status: "scheduled",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: "seed-3",
-      format: "carousel",
-      title: "5 signes qu'il est temps de digitaliser vos process",
-      content: "Un carrousel en 5 slides pour identifier les signaux d'alerte dans votre organisation.",
-      slides: [
-        { id: "s1", caption: "1. Vos équipes perdent du temps sur des tâches répétitives" },
-        { id: "s2", caption: "2. L'information circule mal entre les services" },
-        { id: "s3", caption: "3. Vous manquez de visibilité sur vos indicateurs clés" },
-        { id: "s4", caption: "4. Les erreurs manuelles se répètent" },
-        { id: "s5", caption: "5. Daïmo peut vous aider → contactez-nous" },
-      ],
-      date: dateInCurrentMonth(17),
-      time: "14:00",
       status: "draft",
       createdAt: now,
       updatedAt: now,
-    },
-  ];
+    };
+
+    if (entry.format === "image") {
+      post.imageUrl = await generatePostGraphic({
+        category: entry.category,
+        headline: entry.title,
+        highlight,
+        visual: "template",
+      });
+    }
+
+    if (entry.format === "carousel" && entry.slides) {
+      const slideCount = entry.slides.length;
+      const slides: CarouselSlide[] = await Promise.all(
+        entry.slides.map(async (caption, i) => ({
+          id: crypto.randomUUID(),
+          caption,
+          imageUrl: await generatePostGraphic({
+            category: entry.category,
+            headline: caption,
+            slideIndex: i + 1,
+            slideCount,
+            visual: "template",
+          }),
+        }))
+      );
+      post.slides = slides;
+    }
+
+    posts.push(post);
+  }
+
+  return posts;
 }

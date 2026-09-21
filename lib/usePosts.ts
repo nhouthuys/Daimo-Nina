@@ -2,20 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Post } from "./types";
-import { buildSeedPosts } from "./seed";
+import { buildCalendarSeedPosts } from "./seed";
 
 const STORAGE_KEY = "daimo-marketing-calendar:posts";
 
-function loadPosts(): Post[] {
-  if (typeof window === "undefined") return [];
+function loadStoredPosts(): Post[] | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return buildSeedPosts();
+    if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return buildSeedPosts();
-    return parsed;
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
-    return buildSeedPosts();
+    return null;
   }
 }
 
@@ -29,8 +28,21 @@ export function usePosts() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setPosts(loadPosts());
-    setReady(true);
+    let cancelled = false;
+
+    async function init() {
+      const stored = loadStoredPosts();
+      const initial = stored ?? (await buildCalendarSeedPosts());
+      if (!cancelled) {
+        setPosts(initial);
+        setReady(true);
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
