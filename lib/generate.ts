@@ -176,27 +176,33 @@ const GENERIC_STATS_SHORT = ["Visible results fast", "Real time savings", "A cal
 const CUSTOM_TITLE_TEMPLATES = ["{topicCap}", "An update on {topic}", "Let's talk about {topic}", "Spotlight: {topic}"];
 
 const CUSTOM_INTROS = [
-  "Today, we want to share something about {topic}.",
-  "Here's an update from the Daïmo team: {topic}.",
-  "Let's talk about {topic}.",
+  "Today, we're taking a moment to talk about {topic}.",
+  "Here's something we wanted to share with you: {topic}.",
+  "We don't always take the time to share this kind of thing, but today felt right: {topic}.",
+];
+
+const CUSTOM_CONTEXTS = [
+  "It's the kind of thing that reminds us why we do what we do — and it wouldn't be possible without the people around us, our team and the clients who put their trust in us every day.",
+  "None of this happens by chance. It's built day after day, with a team that cares and clients who place their trust in us.",
+  "We don't say this often enough, but it's worth saying: this is a team effort, built together with the people who make it possible.",
 ];
 
 const CUSTOM_BODIES = [
-  "At Daïmo, {benefit}. {statCap}.",
-  "Here's what stands out: {benefit}. {statCap}.",
-  "We wanted to take a moment to highlight this: {benefit}. {statCap}.",
+  "At Daïmo, {benefit} — that's what guides us every day. {statCap}.",
+  "What matters most to us here is {benefit}. {statCap}.",
+  "If there's one thing we hold on to, it's {benefit}. {statCap}.",
 ];
 
 const CUSTOM_CTAS = [
-  "Curious to know more? Let's talk 👇",
-  "Want the details? Get in touch with the Daïmo team.",
-  "Follow along as we share more about this.",
+  "Want to know more, or just want to say hi? Let's talk 👇",
+  "Thank you to everyone who's part of this, one way or another. 🙏",
+  "We'd love to hear your thoughts on this — drop a comment or reach out. 🤝",
 ];
 
 const CUSTOM_IMAGE_CAPTIONS = [
-  "{topicCap}. {benefitCap}. {statCap}. 💡",
-  "A quick update from Daïmo: {topic}. {statCap}. 🚀",
-  "{topicCap}: {benefitCap}. {statCap}. ⚙️",
+  "{topicCap}. {benefitCap}, and {stat}. It wouldn't mean much without the team and clients who make it possible. 💡",
+  "A quick update from Daïmo: {topic}. {benefitCap}. {statCap}. 🚀",
+  "{topicCap}: {benefitCap}. {statCap}. Thank you to everyone who's part of this story. ⚙️",
 ];
 
 function slugifyHashtag(theme: string): string {
@@ -331,9 +337,12 @@ function generateFromCustomTheme(format: PostFormat, theme: string, category: Gr
   const highlight = topic.statShort;
 
   if (format === "article") {
-    const content = [fill(pick(CUSTOM_INTROS), topic), fill(pick(CUSTOM_BODIES), topic), fill(pick(CUSTOM_CTAS), topic)].join(
-      "\n\n"
-    );
+    const content = [
+      fill(pick(CUSTOM_INTROS), topic),
+      pick(CUSTOM_CONTEXTS),
+      fill(pick(CUSTOM_BODIES), topic),
+      fill(pick(CUSTOM_CTAS), topic),
+    ].join("\n\n");
     return { title, content, hashtag: topic.hashtag, category, highlight };
   }
 
@@ -345,11 +354,12 @@ function generateFromCustomTheme(format: PostFormat, theme: string, category: Gr
   // carousel
   const slides: CarouselSlide[] = [
     { id: crypto.randomUUID(), caption: title },
+    { id: crypto.randomUUID(), caption: capitalize(pick(CUSTOM_CONTEXTS)) },
     { id: crypto.randomUUID(), caption: `${capitalize(topic.benefit)}.` },
     { id: crypto.randomUUID(), caption: `${capitalize(topic.stat)}.` },
     { id: crypto.randomUUID(), caption: "Want to talk about it? Contact the Daïmo team →" },
   ];
-  const content = `A closer look at ${theme}. ${topic.hashtag}`;
+  const content = [fill(pick(CUSTOM_INTROS), topic), pick(CUSTOM_CONTEXTS)].join("\n\n") + ` ${topic.hashtag}`;
   return { title, content, slides, hashtag: topic.hashtag, category, highlight };
 }
 

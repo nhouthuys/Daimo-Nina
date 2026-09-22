@@ -38,7 +38,7 @@ export function PostModal({
   onSave: (post: Post) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
-  onRegenerate?: (theme?: string) => void;
+  onRegenerate?: (theme?: string, format?: PostFormat) => void;
   reviewEmail?: string;
 }) {
   const [format, setFormat] = useState<PostFormat>(initial.format);
@@ -202,14 +202,15 @@ export function PostModal({
               className="min-w-[220px] flex-1 rounded-full border border-daimo-blue/30 bg-white px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
             />
             <button
-              onClick={() => onRegenerate(themeHint.trim() || undefined)}
+              onClick={() => onRegenerate(themeHint.trim() || undefined, format)}
+              title={`Génère un ${FORMAT_LABELS[format].toLowerCase()} sur ce thème (le format sélectionné ci-dessous est conservé)`}
               className="shrink-0 rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90"
             >
-              Générer (texte + image)
+              Générer ({FORMAT_LABELS[format].toLowerCase()})
             </button>
             <button
               onClick={() => onRegenerate()}
-              title="Génère un post sur un thème aléatoire, sans tenir compte du champ ci-dessus"
+              title="Génère un post sur un thème et un format aléatoires, sans tenir compte du champ ni du format ci-dessus"
               className="shrink-0 text-xs font-medium text-daimo-blue hover:underline"
             >
               🎲 Aléatoire

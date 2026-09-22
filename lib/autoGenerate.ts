@@ -1,7 +1,7 @@
 import { pickWeightedFormat } from "./generate";
 import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
-import { Post, VisualStyle } from "./types";
+import { Post, PostFormat, VisualStyle } from "./types";
 
 function pickVisualStyle(): VisualStyle {
   return Math.random() < 0.6 ? "template" : "photo";
@@ -14,14 +14,18 @@ function pickVisualStyle(): VisualStyle {
  * highlight drawn on either the brand template or a real photo background — for
  * formats that need one. All slides of a carousel share the same category/theme
  * and visual style so the set reads as one consistent design.
+ *
+ * `forcedFormat`, when given, keeps the format the caller already chose (e.g.
+ * regenerating a post whose format is set in the editor) instead of rerolling it.
  */
 export async function createGeneratedPost(
   date: string,
   time: string,
   customTheme?: string,
-  guidelines?: string
+  guidelines?: string,
+  forcedFormat?: PostFormat
 ): Promise<Post> {
-  const format = pickWeightedFormat();
+  const format = forcedFormat ?? pickWeightedFormat();
   const generated = await generateContentSmart(format, customTheme, guidelines);
   const visualStyle = pickVisualStyle();
   const now = new Date().toISOString();

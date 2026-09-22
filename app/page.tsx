@@ -70,10 +70,16 @@ export default function Home() {
     });
   }
 
-  async function handleGenerate(date: string, time: string, customTheme?: string, replacing?: Post) {
+  async function handleGenerate(
+    date: string,
+    time: string,
+    customTheme?: string,
+    replacing?: Post,
+    forcedFormat?: Post["format"]
+  ) {
     setGenerating(true);
     try {
-      const post = await createGeneratedPost(date, time, customTheme, guidelines);
+      const post = await createGeneratedPost(date, time, customTheme, guidelines, forcedFormat);
       setEditingPost(replacing ? { ...post, id: replacing.id, createdAt: replacing.createdAt } : post);
     } finally {
       setGenerating(false);
@@ -170,7 +176,9 @@ export default function Home() {
             deletePost(id);
             setEditingPost(null);
           }}
-          onRegenerate={(theme) => handleGenerate(editingPost.date, editingPost.time, theme, editingPost)}
+          onRegenerate={(theme, forcedFormat) =>
+            handleGenerate(editingPost.date, editingPost.time, theme, editingPost, forcedFormat)
+          }
           reviewEmail={reviewEmail || undefined}
         />
       )}
