@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   CarouselSlide,
   FORMAT_LABELS,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/types";
 import { generatePostGraphic } from "@/lib/graphic";
 import { sendPostEmail } from "@/lib/sendPostEmail";
+import { uploadImage } from "@/lib/uploadImage";
 import { Modal } from "./Modal";
 
 function newSlide(): CarouselSlide {
@@ -58,7 +59,40 @@ export function PostModal({
   const [status, setStatus] = useState<PostStatus>(initial.status);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState<{ ok: boolean; message: string } | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<{ id: string; message: string } | null>(null);
+  const mainImageInputRef = useRef<HTMLInputElement>(null);
   const isEditing = initial.title !== "" || initial.content !== "";
+
+  async function handleUploadMainImage(file: File) {
+    setUploadingId("main");
+    setUploadError(null);
+    try {
+      const result = await uploadImage(file);
+      if (result.ok && result.url) {
+        setImageUrl(result.url);
+      } else {
+        setUploadError({ id: "main", message: result.error ?? "Échec de l'upload." });
+      }
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
+  async function handleUploadSlideImage(slideId: string, file: File) {
+    setUploadingId(slideId);
+    setUploadError(null);
+    try {
+      const result = await uploadImage(file);
+      if (result.ok && result.url) {
+        setSlides((prev) => prev.map((s) => (s.id === slideId ? { ...s, imageUrl: result.url } : s)));
+      } else {
+        setUploadError({ id: slideId, message: result.error ?? "Échec de l'upload." });
+      }
+    } finally {
+      setUploadingId(null);
+    }
+  }
 
   async function handleSendEmail() {
     if (!reviewEmail) return;
@@ -343,22 +377,46 @@ export function PostModal({
               </p>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Ou utilisez une photo déjà existante
-              </label>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Ou utilisez une photo déjà existante
+                </label>
+                <button
+                  onClick={() => mainImageInputRef.current?.click()}
+                  disabled={uploadingId === "main"}
+                  className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+                >
+                  {uploadingId === "main" ? "⏳ Upload…" : "📤 Uploader une image"}
+                </button>
+                <input
+                  ref={mainImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadMainImage(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
               <input
                 type="url"
                 defaultValue={imageUrl && !imageUrl.startsWith("data:") ? imageUrl : ""}
                 onBlur={(e) => {
                   if (e.target.value.trim()) setImageUrl(e.target.value.trim());
                 }}
-                placeholder="https://… (lien vers une photo déjà en ligne)"
+                placeholder="https://… (lien vers une photo déjà en ligne, ou uploadez un fichier ci-dessus)"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
               />
               <p className="mt-1 text-xs text-slate-400">
-                Collez le lien d&apos;une photo que vous avez déjà (Drive, site, banque d&apos;images…) :
-                elle remplacera l&apos;image ci-dessus telle quelle, sans texte ajouté par-dessus.
+                Collez le lien d&apos;une photo que vous avez déjà (Drive, site, banque d&apos;images…),
+                ou uploadez directement un fichier depuis votre ordinateur : elle remplacera l&apos;image
+                ci-dessus telle quelle, sans texte ajouté par-dessus.
               </p>
+              {uploadError?.id === "main" && (
+                <p className="mt-1 text-xs text-daimo-pink">{uploadError.message}</p>
+              )}
             </div>
           </div>
         )}
@@ -417,16 +475,40 @@ export function PostModal({
                       ✕
                     </button>
                   </div>
-                  <input
-                    type="url"
-                    defaultValue={slide.imageUrl && !slide.imageUrl.startsWith("data:") ? slide.imageUrl : ""}
-                    onBlur={(e) => {
-                      const url = e.target.value.trim();
-                      if (url) setSlides((prev) => prev.map((s) => (s.id === slide.id ? { ...s, imageUrl: url } : s)));
-                    }}
-                    placeholder="Ou collez ici le lien d'une photo déjà existante pour cette slide"
-                    className="ml-7 w-[calc(100%-1.75rem)] rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
-                  />
+                  <div className="ml-7 flex w-[calc(100%-1.75rem)] items-center gap-1.5">
+                    <input
+                      type="url"
+                      defaultValue={slide.imageUrl && !slide.imageUrl.startsWith("data:") ? slide.imageUrl : ""}
+                      onBlur={(e) => {
+                        const url = e.target.value.trim();
+                        if (url) setSlides((prev) => prev.map((s) => (s.id === slide.id ? { ...s, imageUrl: url } : s)));
+                      }}
+                      placeholder="Ou collez ici le lien d'une photo déjà existante pour cette slide"
+                      className="w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+                    />
+                    <button
+                      onClick={() => document.getElementById(`slide-upload-${slide.id}`)?.click()}
+                      disabled={uploadingId === slide.id}
+                      title="Uploader une image pour cette slide"
+                      className="shrink-0 text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+                    >
+                      {uploadingId === slide.id ? "⏳" : "📤"}
+                    </button>
+                    <input
+                      id={`slide-upload-${slide.id}`}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadSlideImage(slide.id, file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                  {uploadError?.id === slide.id && (
+                    <p className="ml-7 text-xs text-daimo-pink">{uploadError.message}</p>
+                  )}
                 </div>
               ))}
             </div>
