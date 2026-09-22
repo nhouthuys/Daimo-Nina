@@ -3,22 +3,25 @@
 import Link from "next/link";
 import { useState } from "react";
 import { DaimoMark } from "@/components/Logo";
-import { extractKeywords, buildStockPhotoUrl } from "@/lib/stockPhoto";
+import { extractKeywords } from "@/lib/stockPhoto";
+import { fetchStockPhotos, StockPhoto } from "@/lib/fetchStockPhotos";
 
 type Aspect = "wide" | "square" | "portrait";
 
-const ASPECTS: Record<Aspect, { label: string; width: number; height: number }> = {
-  wide: { label: "Bannière large (1600×900)", width: 1600, height: 900 },
-  square: { label: "Carré (1200×1200)", width: 1200, height: 1200 },
-  portrait: { label: "Portrait (900×1200)", width: 900, height: 1200 },
+const ASPECTS: Record<Aspect, { label: string; width: number; height: number; orientation: "landscape" | "square" | "portrait" }> = {
+  wide: { label: "Bannière large (1600×900)", width: 1600, height: 900, orientation: "landscape" },
+  square: { label: "Carré (1200×1200)", width: 1200, height: 1200, orientation: "square" },
+  portrait: { label: "Portrait (900×1200)", width: 900, height: 1200, orientation: "portrait" },
 };
 
 export default function WebsiteImages() {
   const [text, setText] = useState("");
   const [keywordsInput, setKeywordsInput] = useState("");
   const [aspect, setAspect] = useState<Aspect>("wide");
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<StockPhoto[]>([]);
+  const [source, setSource] = useState<"pexels" | "loremflickr" | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function currentKeywords(): string[] {
     const typed = keywordsInput
@@ -32,13 +35,19 @@ export default function WebsiteImages() {
     setKeywordsInput(extractKeywords(text).join(", "));
   }
 
-  function generate() {
+  async function generate() {
     setGenerating(true);
+    setError(null);
     try {
       const keywords = currentKeywords();
-      const { width, height } = ASPECTS[aspect];
-      const batch = Array.from({ length: 6 }, () => buildStockPhotoUrl(keywords, width, height));
-      setPhotos(batch);
+      const { width, height, orientation } = ASPECTS[aspect];
+      const result = await fetchStockPhotos(keywords, 6, width, height, orientation);
+      if (result.ok && result.photos) {
+        setPhotos(result.photos);
+        setSource(result.source ?? null);
+      } else {
+        setError(result.error ?? "Échec de la recherche de photos.");
+      }
     } finally {
       setGenerating(false);
     }
@@ -127,6 +136,7 @@ export default function WebsiteImages() {
           >
             {generating ? "⏳ Recherche…" : "🖼️ Proposer des photos"}
           </button>
+          {error && <p className="text-xs text-daimo-pink">{error}</p>}
         </div>
 
         {photos.length > 0 && (
@@ -137,13 +147,20 @@ export default function WebsiteImages() {
                 🔄 Proposer d&apos;autres photos
               </button>
             </div>
+            {source === "loremflickr" && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                Résultats via le moteur gratuit de secours (mots-clés approximatifs). Pour des
+                résultats vraiment pertinents, configurez une clé Pexels (PEXELS_API_KEY, gratuite,
+                sans carte bancaire) sur Vercel — voir plus bas.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {photos.map((url, i) => (
+              {photos.map((photo, i) => (
                 <div key={i} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Proposition photo ${i + 1}`} className="aspect-square w-full object-cover" />
+                  <img src={photo.url} alt={photo.alt} className="aspect-square w-full object-cover" />
                   <a
-                    href={url}
+                    href={photo.url}
                     target="_blank"
                     rel="noreferrer"
                     className="block px-2 py-1.5 text-center text-xs font-medium text-daimo-blue hover:underline"
@@ -160,6 +177,16 @@ export default function WebsiteImages() {
             </p>
           </div>
         )}
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-500 space-y-1">
+          <p className="font-medium text-slate-700">Pour des photos vraiment pertinentes (recommandé)</p>
+          <p>
+            Créez un compte gratuit sur pexels.com/api (sans carte bancaire), copiez la clé API, puis
+            sur Vercel : Project Settings → Environment Variables → ajoutez <code>PEXELS_API_KEY</code>{" "}
+            avec cette clé, et redéployez. Sans cette clé, l&apos;outil utilise un moteur de secours
+            gratuit mais moins précis.
+          </p>
+        </div>
       </div>
     </main>
   );
