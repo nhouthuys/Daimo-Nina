@@ -1,12 +1,18 @@
 import { readSheet } from "read-excel-file/browser";
 import { CarouselSlide, GraphicCategory, Post, PostFormat } from "./types";
+import { generateContent, pickWeightedFormat } from "./generate";
 import { generatePostGraphic } from "./graphic";
+
+/** How the "Thème/contenu" cell should be turned into the post's actual copy. */
+export type EntryType = "text" | "theme" | "ai";
 
 export interface ParsedCalendarEntry {
   date: string; // YYYY-MM-DD
   theme: string;
   format: PostFormat;
+  formatSpecified: boolean;
   videoNote: boolean;
+  type: EntryType;
 }
 
 function normalize(s: string): string {
@@ -38,26 +44,59 @@ function parseDateCell(cell: unknown): string | null {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
-function mapFormat(cell: unknown): { format: PostFormat; videoNote: boolean } {
+function mapFormat(cell: unknown): { format: PostFormat; formatSpecified: boolean; videoNote: boolean } {
   const text = normalize(cellToText(cell));
-  if (text.includes("carrousel") || text.includes("carousel")) return { format: "carousel", videoNote: false };
-  if (text.includes("video")) return { format: "article", videoNote: true };
-  if (text.includes("photo")) return { format: "image", videoNote: false };
-  return { format: "article", videoNote: false };
+  if (!text) return { format: "article", formatSpecified: false, videoNote: false };
+  if (text.includes("carrousel") || text.includes("carousel")) return { format: "carousel", formatSpecified: true, videoNote: false };
+  if (text.includes("video")) return { format: "article", formatSpecified: true, videoNote: true };
+  if (text.includes("photo")) return { format: "image", formatSpecified: true, videoNote: false };
+  return { format: "article", formatSpecified: true, videoNote: false };
 }
 
-function guessCategory(theme: string): GraphicCategory {
-  const text = normalize(theme);
-  if (/(hiring|recrut|job|poste|career|carriere)/.test(text)) return "hiring";
+/**
+ * "Texte": the cell already holds the finished post copy, use it as-is.
+ * "Thème": the cell names a topic, the tool writes a full post around it.
+ * "IA": the tool decides everything; the cell (if any) is only a loose hint.
+ * Unrecognized or empty values default to "theme", the previous behavior.
+ */
+function mapType(cell: unknown): EntryType {
+  const text = normalize(cellToText(cell));
+  if (text === "texte" || text === "text") return "text";
+  if (text === "ia" || text === "ai") return "ai";
+  return "theme";
+}
+
+function guessCategory(text: string): GraphicCategory {
+  const normalized = normalize(text);
+  if (/(hiring|recrut|job|poste|career|carriere)/.test(normalized)) return "hiring";
   return "client";
+}
+
+/** Turns the first line/sentence of a finished text into a short image headline. */
+function deriveTitleFromText(text: string): string {
+  const firstLine = text.split(/\n+/)[0].trim();
+  const sentenceMatch = firstLine.match(/^(.{10,100}?[.!?])(\s|$)/);
+  const candidate = (sentenceMatch ? sentenceMatch[1] : firstLine).replace(/[.!?]+$/, "").trim();
+  if (candidate.length <= 90) return candidate || "Update";
+  return `${candidate.slice(0, 87).trim()}…`;
+}
+
+/** Splits a finished text into carousel slides: by paragraph, or by sentence if there's only one. */
+function splitTextIntoSlides(text: string, max = 6): string[] {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const chunks = paragraphs.length > 1 ? paragraphs : text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+  return (chunks.length > 0 ? chunks : [text.trim()]).slice(0, max);
 }
 
 /**
  * Reads a calendar spreadsheet entirely client-side (the file never leaves the
  * browser) and extracts one entry per row that has a theme filled in. Column
- * matching is header-name based (Semaine/Week, Thème.../Theme..., Format), so it
- * tolerates columns being reordered, and works whether "Semaine" is stored as
- * text ("du 21/09/2026") or as a real date cell.
+ * matching is header-name based (Semaine/Week, Thème.../Theme..., Format, Type),
+ * so it tolerates columns being reordered, and works whether "Semaine" is stored
+ * as text ("du 21/09/2026") or as a real date cell.
  */
 export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry[]> {
   const rows = (await readSheet(file)) as unknown[][];
@@ -66,6 +105,7 @@ export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry
   let dateCol = -1;
   let themeCol = -1;
   let formatCol = -1;
+  let typeCol = -1;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -75,6 +115,7 @@ export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry
       if (header.includes("semaine") || header === "week") dateCol = c;
       else if (header.includes("theme")) themeCol = c;
       else if (header === "format") formatCol = c;
+      else if (header === "type") typeCol = c;
     }
     if (dateCol !== -1 && themeCol !== -1) {
       headerRowIndex = i;
@@ -95,51 +136,67 @@ export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry
     if (!theme) continue;
     const date = parseDateCell(row[dateCol]);
     if (!date) continue;
-    const { format, videoNote } = formatCol !== -1 ? mapFormat(row[formatCol]) : { format: "article" as PostFormat, videoNote: false };
-    entries.push({ date, theme, format, videoNote });
+    const { format, formatSpecified, videoNote } =
+      formatCol !== -1 ? mapFormat(row[formatCol]) : { format: "article" as PostFormat, formatSpecified: false, videoNote: false };
+    const type = typeCol !== -1 ? mapType(row[typeCol]) : "theme";
+    entries.push({ date, theme, format, formatSpecified, videoNote, type });
   }
 
   return entries;
 }
 
-function buildDraftBody(theme: string, format: PostFormat): { content: string; slides?: string[] } {
-  if (format === "carousel") {
-    return {
-      content: `🚧 Carousel to complete: walk through "${theme}", step by step.`,
-      slides: [
-        theme,
-        `Slide to complete: introduce "${theme}".`,
-        "Slide to complete: what's the key point or benefit?",
-        "Slide to complete: an example or a result?",
-        "Want to talk about it? Contact the Daïmo team →",
-      ],
-    };
-  }
-  return { content: `🚧 Draft to complete: share your update about "${theme}".` };
+function withVideoNote(content: string, videoNote: boolean): string {
+  return videoNote
+    ? `${content}\n\nFormat planned in the calendar: video. This tool doesn't generate video, to be produced and published separately.`
+    : content;
 }
 
 /**
  * Turns parsed spreadsheet rows into full posts, including real generated
  * visuals (same pipeline as "Générer un post"). Runs client-side, so this only
- * works in the browser.
+ * works in the browser. Behavior depends on each row's "Type":
+ * - "text": the sheet cell is the finished copy, used as-is, only the image
+ *   is generated for it.
+ * - "theme": the cell names a topic, a full post is generated around it (same
+ *   engine as the "Proposez un thème" field).
+ * - "ai": the tool picks everything; the cell, if not empty, is used as a
+ *   loose hint, and the format is picked freely when the sheet didn't specify
+ *   one for that row.
  */
 export async function buildPostsFromEntries(entries: ParsedCalendarEntry[]): Promise<Post[]> {
   const now = new Date().toISOString();
   const posts: Post[] = [];
 
   for (const entry of entries) {
-    const category = guessCategory(entry.theme);
-    const { content: draftContent, slides: draftSlides } = buildDraftBody(entry.theme, entry.format);
-    const content = entry.videoNote
-      ? `${draftContent}\n\nFormat planned in the calendar: video. This tool doesn't generate video, to be produced and published separately.`
-      : draftContent;
-    const highlight = "Contact the Daïmo team →";
+    const format = entry.type === "ai" && !entry.formatSpecified ? pickWeightedFormat() : entry.format;
+
+    let title: string;
+    let content: string;
+    let slideCaptions: string[] | undefined;
+    let category: GraphicCategory;
+    let highlight: string;
+
+    if (entry.type === "text") {
+      title = deriveTitleFromText(entry.theme);
+      content = entry.theme;
+      category = guessCategory(entry.theme);
+      highlight = "Contact the Daïmo team →";
+      if (format === "carousel") slideCaptions = splitTextIntoSlides(entry.theme);
+    } else {
+      const customTheme = entry.type === "theme" ? entry.theme : entry.theme || undefined;
+      const generated = generateContent(format, customTheme);
+      title = generated.title;
+      content = generated.content;
+      slideCaptions = generated.slides?.map((s) => s.caption);
+      category = generated.category;
+      highlight = generated.highlight;
+    }
 
     const post: Post = {
       id: crypto.randomUUID(),
-      format: entry.format,
-      title: entry.theme,
-      content,
+      format,
+      title,
+      content: withVideoNote(content, entry.videoNote),
       graphicCategory: category,
       visualStyle: "template",
       date: entry.date,
@@ -149,29 +206,18 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[]): Pro
       updatedAt: now,
     };
 
-    if (entry.format === "image") {
-      post.imageUrl = await generatePostGraphic({
-        category,
-        headline: entry.theme,
-        highlight,
-        visual: "template",
-      });
+    if (format === "image") {
+      post.imageUrl = await generatePostGraphic({ category, headline: title, highlight, visual: "template" });
     }
 
-    if (entry.format === "carousel" && draftSlides) {
-      const slideCount = draftSlides.length;
+    if (format === "carousel" && slideCaptions && slideCaptions.length > 0) {
+      const slideCount = slideCaptions.length;
       post.slides = await Promise.all(
-        draftSlides.map(
+        slideCaptions.map(
           async (caption, i): Promise<CarouselSlide> => ({
             id: crypto.randomUUID(),
             caption,
-            imageUrl: await generatePostGraphic({
-              category,
-              headline: caption,
-              slideIndex: i + 1,
-              slideCount,
-              visual: "template",
-            }),
+            imageUrl: await generatePostGraphic({ category, headline: caption, slideIndex: i + 1, slideCount, visual: "template" }),
           })
         )
       );

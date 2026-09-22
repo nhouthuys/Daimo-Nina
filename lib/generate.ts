@@ -170,6 +170,35 @@ const GENERIC_STATS = [
 
 const GENERIC_STATS_SHORT = ["Visible results fast", "Real time savings", "A calmer day to day"];
 
+// Templates for a user-typed theme, kept topic-nature-agnostic (no assumption that the
+// theme is a workflow pain point to solve) since a theme can just as well be an
+// announcement, an event or a celebration, not just a process to fix.
+const CUSTOM_TITLE_TEMPLATES = ["{topicCap}", "An update on {topic}", "Let's talk about {topic}", "Spotlight: {topic}"];
+
+const CUSTOM_INTROS = [
+  "Today, we want to share something about {topic}.",
+  "Here's an update from the Daïmo team: {topic}.",
+  "Let's talk about {topic}.",
+];
+
+const CUSTOM_BODIES = [
+  "At Daïmo, {benefit}. {statCap}.",
+  "Here's what stands out: {benefit}. {statCap}.",
+  "We wanted to take a moment to highlight this: {benefit}. {statCap}.",
+];
+
+const CUSTOM_CTAS = [
+  "Curious to know more? Let's talk 👇",
+  "Want the details? Get in touch with the Daïmo team.",
+  "Follow along as we share more about this.",
+];
+
+const CUSTOM_IMAGE_CAPTIONS = [
+  "{topicCap}. {benefitCap}. {statCap}. 💡",
+  "A quick update from Daïmo: {topic}. {statCap}. 🚀",
+  "{topicCap}: {benefitCap}. {statCap}. ⚙️",
+];
+
 function slugifyHashtag(theme: string): string {
   const cleaned = theme
     .normalize("NFD")
@@ -296,17 +325,46 @@ function generateFromTopic(format: PostFormat, topic: Topic, category: GraphicCa
   return { title, content, slides, hashtag: topic.hashtag, category, highlight };
 }
 
+function generateFromCustomTheme(format: PostFormat, theme: string, category: GraphicCategory): GeneratedContent {
+  const topic = buildCustomTopic(theme);
+  const title = fill(pick(CUSTOM_TITLE_TEMPLATES), topic);
+  const highlight = topic.statShort;
+
+  if (format === "article") {
+    const content = [fill(pick(CUSTOM_INTROS), topic), fill(pick(CUSTOM_BODIES), topic), fill(pick(CUSTOM_CTAS), topic)].join(
+      "\n\n"
+    );
+    return { title, content, hashtag: topic.hashtag, category, highlight };
+  }
+
+  if (format === "image") {
+    const content = fill(pick(CUSTOM_IMAGE_CAPTIONS), topic) + ` ${topic.hashtag}`;
+    return { title, content, hashtag: topic.hashtag, category, highlight };
+  }
+
+  // carousel
+  const slides: CarouselSlide[] = [
+    { id: crypto.randomUUID(), caption: title },
+    { id: crypto.randomUUID(), caption: `${capitalize(topic.benefit)}.` },
+    { id: crypto.randomUUID(), caption: `${capitalize(topic.stat)}.` },
+    { id: crypto.randomUUID(), caption: "Want to talk about it? Contact the Daïmo team →" },
+  ];
+  const content = `A closer look at ${theme}. ${topic.hashtag}`;
+  return { title, content, slides, hashtag: topic.hashtag, category, highlight };
+}
+
 /**
  * Builds the post content. When `customTheme` is provided, the post is built
- * around that exact theme (using generic, non-invented phrasing around it, since
- * there is no AI backend here to research an arbitrary topic) instead of picking
- * one of the built-in Daïmo topics or hiring roles at random.
+ * around that exact theme (using generic, non-invented phrasing that doesn't
+ * assume the theme is a workflow pain point, since there is no AI backend here
+ * to research an arbitrary topic) instead of picking one of the built-in Daïmo
+ * topics or hiring roles at random.
  */
 export function generateContent(format: PostFormat, customTheme?: string): GeneratedContent {
   const theme = customTheme?.trim();
   if (theme) {
     const category: GraphicCategory = Math.random() < 0.5 ? "tip" : "client";
-    return generateFromTopic(format, buildCustomTopic(theme), category);
+    return generateFromCustomTheme(format, theme, category);
   }
 
   const category = pickCategory();
