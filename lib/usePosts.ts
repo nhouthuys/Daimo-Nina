@@ -61,5 +61,32 @@ export function usePosts() {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  return { posts, ready, upsertPost, deletePost };
+  /**
+   * Merges freshly-imported posts into the calendar: a post landing on a date
+   * that already has one replaces it (keeping its original id/createdAt so it
+   * stays the "same" calendar entry); any other date is added as new.
+   */
+  const importPosts = useCallback(
+    (newPosts: Post[]) => {
+      const result = [...posts];
+      let added = 0;
+      let updated = 0;
+      for (const incoming of newPosts) {
+        const existingIndex = result.findIndex((p) => p.date === incoming.date);
+        if (existingIndex >= 0) {
+          const existing = result[existingIndex];
+          result[existingIndex] = { ...incoming, id: existing.id, createdAt: existing.createdAt };
+          updated++;
+        } else {
+          result.push(incoming);
+          added++;
+        }
+      }
+      setPosts(result);
+      return { added, updated };
+    },
+    [posts]
+  );
+
+  return { posts, ready, upsertPost, deletePost, importPosts };
 }

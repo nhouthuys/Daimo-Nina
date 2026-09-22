@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface ActionBarProps {
   onNotes: () => void;
   onCharter: () => void;
   onGenerate: (theme?: string) => void;
   onNewPost: () => void;
+  onImportFile: (file: File) => void;
   generating?: boolean;
+  importing?: boolean;
 }
 
 function PillButton({
@@ -36,14 +38,37 @@ function PillButton({
   );
 }
 
-export function ActionBar({ onNotes, onCharter, onGenerate, onNewPost, generating = false }: ActionBarProps) {
+export function ActionBar({
+  onNotes,
+  onCharter,
+  onGenerate,
+  onNewPost,
+  onImportFile,
+  generating = false,
+  importing = false,
+}: ActionBarProps) {
   const [theme, setTheme] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <PillButton onClick={onNotes}>📝 Notes</PillButton>
         <PillButton onClick={onCharter}>🎨 Charte graphique</PillButton>
+        <PillButton onClick={() => fileInputRef.current?.click()} disabled={importing}>
+          {importing ? "⏳ Import…" : "📥 Importer un calendrier"}
+        </PillButton>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onImportFile(file);
+            e.target.value = "";
+          }}
+        />
         <PillButton onClick={onNewPost} primary>
           + Nouveau post
         </PillButton>

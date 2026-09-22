@@ -15,6 +15,7 @@ import { usePosts } from "@/lib/usePosts";
 import { Post } from "@/lib/types";
 import { todayISO } from "@/lib/date";
 import { createGeneratedPost } from "@/lib/autoGenerate";
+import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
 
 function emptyPost(date: string): Post {
   const now = new Date().toISOString();
@@ -32,16 +33,18 @@ function emptyPost(date: string): Post {
 }
 
 export default function Home() {
-  const { posts, ready, upsertPost, deletePost } = usePosts();
+  const { posts, ready, upsertPost, deletePost, importPosts } = usePosts();
   const [view, setView] = useState<ViewMode>("calendar");
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [infoModal, setInfoModal] = useState<"notes" | "charter" | null>(null);
+  const [infoModal, setInfoModal] = useState<"notes" | "charter" | "import-result" | null>(null);
+  const [importMessage, setImportMessage] = useState("");
   const [connected, setConnected] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   function goToMonth(delta: number) {
     setCursor((prev) => {
@@ -60,6 +63,35 @@ export default function Home() {
     }
   }
 
+  async function handleImportFile(file: File) {
+    setImporting(true);
+    try {
+      const entries = await parseCalendarFile(file);
+      if (entries.length === 0) {
+        setImportMessage(
+          "Aucun thème trouvé dans ce fichier. Vérifiez qu'il contient bien des colonnes « Semaine » et « Thème/contenu » avec des lignes remplies."
+        );
+        setInfoModal("import-result");
+        return;
+      }
+      const confirmed = window.confirm(
+        `${entries.length} thème(s) trouvé(s) dans le fichier.\n\nL'import remplacera le contenu de tout post déjà programmé aux mêmes dates. Continuer ?`
+      );
+      if (!confirmed) return;
+      const newPosts = await buildPostsFromEntries(entries);
+      const { added, updated } = importPosts(newPosts);
+      setImportMessage(
+        `Import terminé : ${added} post(s) ajouté(s), ${updated} post(s) mis à jour (même date déjà programmée).`
+      );
+      setInfoModal("import-result");
+    } catch (err) {
+      setImportMessage(err instanceof Error ? err.message : "Échec de l'import : fichier illisible.");
+      setInfoModal("import-result");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="space-y-6">
@@ -71,6 +103,8 @@ export default function Home() {
           onGenerate={(theme) => handleGenerate(todayISO(), "09:00", theme)}
           generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
+          onImportFile={handleImportFile}
+          importing={importing}
         />
 
         <LinkedInBanner connected={connected} onConnect={() => setConnected((c) => !c)} />
@@ -156,6 +190,12 @@ export default function Home() {
           <p className="text-xs text-slate-400">
             Typographies : Exo 2 (titres), Exo (texte courant), Calibri en substitution.
           </p>
+        </InfoModal>
+      )}
+
+      {infoModal === "import-result" && (
+        <InfoModal title="Import du calendrier" onClose={() => setInfoModal(null)}>
+          <p>{importMessage}</p>
         </InfoModal>
       )}
     </main>
