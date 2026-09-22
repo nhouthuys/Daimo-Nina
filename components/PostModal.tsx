@@ -13,6 +13,7 @@ import {
   VisualStyle,
 } from "@/lib/types";
 import { generatePostGraphic } from "@/lib/graphic";
+import { sendPostEmail } from "@/lib/sendPostEmail";
 import { Modal } from "./Modal";
 
 function newSlide(): CarouselSlide {
@@ -31,12 +32,14 @@ export function PostModal({
   onDelete,
   onClose,
   onRegenerate,
+  reviewEmail,
 }: {
   initial: Post;
   onSave: (post: Post) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
   onRegenerate?: () => void;
+  reviewEmail?: string;
 }) {
   const [format, setFormat] = useState<PostFormat>(initial.format);
   const [title, setTitle] = useState(initial.title);
@@ -52,7 +55,37 @@ export function PostModal({
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [status, setStatus] = useState<PostStatus>(initial.status);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ ok: boolean; message: string } | null>(null);
   const isEditing = initial.title !== "" || initial.content !== "";
+
+  async function handleSendEmail() {
+    if (!reviewEmail) return;
+    setSendingEmail(true);
+    setEmailFeedback(null);
+    try {
+      const result = await sendPostEmail(
+        {
+          ...initial,
+          format,
+          title: title.trim(),
+          content,
+          imageUrl: format === "image" ? imageUrl : undefined,
+          slides: format === "carousel" ? slides.filter((s) => s.caption.trim() !== "") : undefined,
+          date,
+          time,
+        },
+        reviewEmail
+      );
+      setEmailFeedback(
+        result.ok
+          ? { ok: true, message: `Envoyé à ${reviewEmail}.` }
+          : { ok: false, message: result.error ?? "Échec de l'envoi." }
+      );
+    } finally {
+      setSendingEmail(false);
+    }
+  }
 
   function handleSave() {
     if (!title.trim()) return;
@@ -158,13 +191,33 @@ export function PostModal({
   return (
     <Modal title={isEditing ? "Modifier le post" : "Nouveau post"} onClose={onClose} wide>
       <div className="space-y-5">
-        {onRegenerate && (
-          <button
-            onClick={onRegenerate}
-            className="inline-flex items-center gap-1.5 rounded-full border border-daimo-blue/30 bg-daimo-blue/5 px-3 py-1.5 text-xs font-medium text-daimo-blue hover:bg-daimo-blue/10"
-          >
-            🔁 Générer un autre post (texte + image)
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              className="inline-flex items-center gap-1.5 rounded-full border border-daimo-blue/30 bg-daimo-blue/5 px-3 py-1.5 text-xs font-medium text-daimo-blue hover:bg-daimo-blue/10"
+            >
+              🔁 Générer un autre post (texte + image)
+            </button>
+          )}
+          {reviewEmail ? (
+            <button
+              onClick={handleSendEmail}
+              disabled={sendingEmail || !title.trim()}
+              className="inline-flex items-center gap-1.5 rounded-full border border-daimo-green/30 bg-daimo-green/5 px-3 py-1.5 text-xs font-medium text-daimo-green hover:bg-daimo-green/10 disabled:cursor-wait disabled:opacity-60"
+            >
+              {sendingEmail ? "⏳ Envoi…" : "📧 Envoyer pour vérification"}
+            </button>
+          ) : (
+            <span className="text-xs text-slate-400">
+              Ajoutez un email de vérification dans « Consignes d&apos;écriture » pour envoyer ce post par mail.
+            </span>
+          )}
+        </div>
+        {emailFeedback && (
+          <p className={`text-xs ${emailFeedback.ok ? "text-daimo-green" : "text-daimo-pink"}`}>
+            {emailFeedback.message}
+          </p>
         )}
 
         <div>

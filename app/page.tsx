@@ -17,6 +17,7 @@ import { todayISO } from "@/lib/date";
 import { createGeneratedPost } from "@/lib/autoGenerate";
 import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
 import { useGuidelines } from "@/lib/useGuidelines";
+import { useReviewEmail } from "@/lib/useReviewEmail";
 
 function emptyPost(date: string): Post {
   const now = new Date().toISOString();
@@ -36,6 +37,7 @@ function emptyPost(date: string): Post {
 export default function Home() {
   const { posts, ready, upsertPost, deletePost, importPosts } = usePosts();
   const { guidelines, setGuidelines } = useGuidelines();
+  const { email: reviewEmail, setEmail: setReviewEmail } = useReviewEmail();
   const [view, setView] = useState<ViewMode>("calendar");
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
@@ -156,11 +158,12 @@ export default function Home() {
             setEditingPost(null);
           }}
           onRegenerate={() => handleGenerate(editingPost.date, editingPost.time)}
+          reviewEmail={reviewEmail || undefined}
         />
       )}
 
       {infoModal === "guidelines" && (
-        <InfoModal title="Consignes d'écriture" onClose={() => setInfoModal(null)}>
+        <InfoModal title="Consignes d'écriture & vérification" onClose={() => setInfoModal(null)}>
           <p>
             Décrivez ici le ton, le style, ce qu&apos;il faut toujours mentionner ou éviter, le
             public visé… Ces consignes sont envoyées à l&apos;IA à chaque génération de post.
@@ -176,6 +179,30 @@ export default function Home() {
             Pour que ces consignes soient réellement suivies par une IA, une clé Anthropic
             (ANTHROPIC_API_KEY) doit être configurée côté serveur, sur Vercel. Sans clé, l&apos;outil
             utilise son générateur local (gratuit, mais qui ne lit pas ces consignes).
+          </p>
+
+          <hr className="border-slate-100" />
+
+          <label className="block text-sm font-medium text-slate-700">
+            Email de vérification
+          </label>
+          <p>
+            Une fois renseigné, chaque post ouvre un bouton « 📧 Envoyer pour vérification » : le
+            texte et les visuels générés vous sont envoyés par mail pour relecture, avant de
+            publier vous-même sur LinkedIn (aucune publication automatique).
+          </p>
+          <input
+            type="email"
+            value={reviewEmail}
+            onChange={(e) => setReviewEmail(e.target.value)}
+            placeholder="vous@daimo.be"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+          />
+          <p className="text-xs text-slate-400">
+            Pour que l&apos;envoi fonctionne, une clé Resend (RESEND_API_KEY, gratuite jusqu&apos;à
+            3000 emails/mois, sans carte bancaire) doit être configurée côté serveur, sur Vercel.
+            Sans clé, le bouton d&apos;envoi affiche une erreur claire au lieu d&apos;échouer
+            silencieusement.
           </p>
         </InfoModal>
       )}
