@@ -82,7 +82,15 @@ export function extractKeywords(text: string, max = 4): string[] {
 
 /** Builds a URL for a real, royalty-free stock photo matching the given keywords, from a keyless photo service. */
 export function buildStockPhotoUrl(keywords: string[], width: number, height: number, seed?: number): string {
-  const kw = keywords.length > 0 ? keywords.join(",") : "business,technology";
+  const list = keywords.length > 0 ? keywords : ["business", "technology"];
+  // Encode each tag on its own — encoding the joined string would turn the separating
+  // commas into "%2C", which LoremFlickr can't parse as multiple tags anymore, so it
+  // falls back to an unrelated (and, since the malformed tag never changes, identical) photo.
+  const kw = list
+    .map((k) => k.trim())
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join(",");
   const s = seed ?? Math.floor(Math.random() * 100000);
-  return `https://loremflickr.com/${width}/${height}/${encodeURIComponent(kw)}?random=${s}`;
+  return `https://loremflickr.com/${width}/${height}/${kw}?random=${s}`;
 }
