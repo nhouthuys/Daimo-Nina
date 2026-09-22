@@ -70,11 +70,11 @@ export default function Home() {
     });
   }
 
-  async function handleGenerate(date: string, time: string, customTheme?: string) {
+  async function handleGenerate(date: string, time: string, customTheme?: string, replacing?: Post) {
     setGenerating(true);
     try {
       const post = await createGeneratedPost(date, time, customTheme, guidelines);
-      setEditingPost(post);
+      setEditingPost(replacing ? { ...post, id: replacing.id, createdAt: replacing.createdAt } : post);
     } finally {
       setGenerating(false);
     }
@@ -159,7 +159,7 @@ export default function Home() {
 
       {editingPost && (
         <PostModal
-          key={editingPost.id}
+          key={`${editingPost.id}-${editingPost.updatedAt}`}
           initial={editingPost}
           onClose={() => setEditingPost(null)}
           onSave={(post) => {
@@ -170,7 +170,7 @@ export default function Home() {
             deletePost(id);
             setEditingPost(null);
           }}
-          onRegenerate={() => handleGenerate(editingPost.date, editingPost.time)}
+          onRegenerate={(theme) => handleGenerate(editingPost.date, editingPost.time, theme, editingPost)}
           reviewEmail={reviewEmail || undefined}
         />
       )}

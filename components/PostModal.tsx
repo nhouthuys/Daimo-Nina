@@ -38,11 +38,12 @@ export function PostModal({
   onSave: (post: Post) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
-  onRegenerate?: () => void;
+  onRegenerate?: (theme?: string) => void;
   reviewEmail?: string;
 }) {
   const [format, setFormat] = useState<PostFormat>(initial.format);
   const [title, setTitle] = useState(initial.title);
+  const [themeHint, setThemeHint] = useState(initial.title);
   const [content, setContent] = useState(initial.content);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? "");
   const [slides, setSlides] = useState<CarouselSlide[]>(
@@ -191,15 +192,31 @@ export function PostModal({
   return (
     <Modal title={isEditing ? "Modifier le post" : "Nouveau post"} onClose={onClose} wide>
       <div className="space-y-5">
-        <div className="flex flex-wrap items-center gap-2">
-          {onRegenerate && (
+        {onRegenerate && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-daimo-blue/20 bg-daimo-blue/5 p-2">
+            <span className="shrink-0 text-xs font-medium text-daimo-blue">🔁 Régénérer ce post</span>
+            <input
+              value={themeHint}
+              onChange={(e) => setThemeHint(e.target.value)}
+              placeholder="Thème ou contexte précis à transmettre (ex : Daïmo fête ses 5 ans, remercier l'équipe et les clients…)"
+              className="min-w-[220px] flex-1 rounded-full border border-daimo-blue/30 bg-white px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+            />
             <button
-              onClick={onRegenerate}
-              className="inline-flex items-center gap-1.5 rounded-full border border-daimo-blue/30 bg-daimo-blue/5 px-3 py-1.5 text-xs font-medium text-daimo-blue hover:bg-daimo-blue/10"
+              onClick={() => onRegenerate(themeHint.trim() || undefined)}
+              className="shrink-0 rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90"
             >
-              🔁 Générer un autre post (texte + image)
+              Générer (texte + image)
             </button>
-          )}
+            <button
+              onClick={() => onRegenerate()}
+              title="Génère un post sur un thème aléatoire, sans tenir compte du champ ci-dessus"
+              className="shrink-0 text-xs font-medium text-daimo-blue hover:underline"
+            >
+              🎲 Aléatoire
+            </button>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
           {reviewEmail ? (
             <button
               onClick={handleSendEmail}
