@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { ActionBar } from "@/components/ActionBar";
 import { LinkedInBanner } from "@/components/LinkedInBanner";
@@ -18,6 +18,7 @@ import { createGeneratedPost } from "@/lib/autoGenerate";
 import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
 import { useGuidelines } from "@/lib/useGuidelines";
 import { useReviewEmail } from "@/lib/useReviewEmail";
+import { pushSyncedState } from "@/lib/syncStore";
 
 function emptyPost(date: string): Post {
   const now = new Date().toISOString();
@@ -49,6 +50,18 @@ export default function Home() {
   const [connected, setConnected] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [importing, setImporting] = useState(false);
+
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      pushSyncedState({ posts, reviewEmail });
+    }, 1500);
+    return () => {
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+    };
+  }, [posts, reviewEmail, ready]);
 
   function goToMonth(delta: number) {
     setCursor((prev) => {
@@ -187,9 +200,11 @@ export default function Home() {
             Email de vérification
           </label>
           <p>
-            Une fois renseigné, chaque post ouvre un bouton « 📧 Envoyer pour vérification » : le
-            texte et les visuels générés vous sont envoyés par mail pour relecture, avant de
-            publier vous-même sur LinkedIn (aucune publication automatique).
+            Une fois renseigné : chaque post ouvre un bouton « 📧 Envoyer pour vérification » pour
+            un envoi immédiat, <strong>et</strong> tout post au statut « Programmé » vous est
+            envoyé automatiquement par email le matin de sa date, sans rien cliquer. Dans les deux
+            cas, rien n&apos;est publié automatiquement sur LinkedIn : c&apos;est à vous de
+            vérifier puis de publier.
           </p>
           <input
             type="email"
@@ -199,10 +214,21 @@ export default function Home() {
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
           />
           <p className="text-xs text-slate-400">
-            Pour que l&apos;envoi fonctionne, une clé Resend (RESEND_API_KEY, gratuite jusqu&apos;à
-            3000 emails/mois, sans carte bancaire) doit être configurée côté serveur, sur Vercel.
-            Sans clé, le bouton d&apos;envoi affiche une erreur claire au lieu d&apos;échouer
-            silencieusement.
+            Pour que l&apos;envoi (immédiat ou automatique) fonctionne, une clé Resend
+            (RESEND_API_KEY, gratuite jusqu&apos;à 3000 emails/mois, sans carte bancaire) doit être
+            configurée côté serveur, sur Vercel.
+          </p>
+          <p className="text-xs text-slate-400">
+            Pour que l&apos;envoi <strong>automatique</strong> fonctionne en plus, une base de
+            stockage Vercel Blob (variable BLOB_READ_WRITE_TOKEN, gratuite, créée depuis
+            l&apos;onglet « Storage » de votre projet Vercel) doit aussi être configurée : elle
+            permet au serveur de connaître vos posts programmés, même quand votre navigateur est
+            fermé.
+          </p>
+          <p className="text-xs text-slate-400">
+            Sans ces clés, les boutons et l&apos;envoi automatique échouent silencieusement en
+            arrière-plan (pour l&apos;automatique) ou affichent une erreur claire (pour le bouton
+            manuel) — le reste de l&apos;outil continue de fonctionner normalement.
           </p>
         </InfoModal>
       )}
