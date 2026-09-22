@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 interface ActionBarProps {
-  onNotes: () => void;
+  onGuidelines: () => void;
   onCharter: () => void;
   onGenerate: (theme?: string) => void;
   onNewPost: () => void;
@@ -39,7 +39,7 @@ function PillButton({
 }
 
 export function ActionBar({
-  onNotes,
+  onGuidelines,
   onCharter,
   onGenerate,
   onNewPost,
@@ -53,7 +53,7 @@ export function ActionBar({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <PillButton onClick={onNotes}>📝 Notes</PillButton>
+        <PillButton onClick={onGuidelines}>🧭 Consignes d&apos;écriture</PillButton>
         <PillButton onClick={onCharter}>🎨 Charte graphique</PillButton>
         <PillButton onClick={() => fileInputRef.current?.click()} disabled={importing}>
           {importing ? "⏳ Import…" : "📥 Importer un calendrier"}

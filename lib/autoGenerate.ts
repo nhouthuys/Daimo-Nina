@@ -1,4 +1,5 @@
-import { generateContent, pickWeightedFormat } from "./generate";
+import { pickWeightedFormat } from "./generate";
+import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
 import { Post, VisualStyle } from "./types";
 
@@ -8,14 +9,20 @@ function pickVisualStyle(): VisualStyle {
 
 /**
  * Produces a full, ready-to-review post: real generated copy (title + content,
- * or slide captions for a carousel) plus a real generated graphic — headline and
+ * or slide captions for a carousel — via the Claude API when configured, the
+ * local template engine otherwise) plus a real generated graphic — headline and
  * highlight drawn on either the brand template or a real photo background — for
  * formats that need one. All slides of a carousel share the same category/theme
  * and visual style so the set reads as one consistent design.
  */
-export async function createGeneratedPost(date: string, time: string, customTheme?: string): Promise<Post> {
+export async function createGeneratedPost(
+  date: string,
+  time: string,
+  customTheme?: string,
+  guidelines?: string
+): Promise<Post> {
   const format = pickWeightedFormat();
-  const generated = generateContent(format, customTheme);
+  const generated = await generateContentSmart(format, customTheme, guidelines);
   const visualStyle = pickVisualStyle();
   const now = new Date().toISOString();
 

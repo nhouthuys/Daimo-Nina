@@ -16,6 +16,7 @@ import { Post } from "@/lib/types";
 import { todayISO } from "@/lib/date";
 import { createGeneratedPost } from "@/lib/autoGenerate";
 import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
+import { useGuidelines } from "@/lib/useGuidelines";
 
 function emptyPost(date: string): Post {
   const now = new Date().toISOString();
@@ -34,13 +35,14 @@ function emptyPost(date: string): Post {
 
 export default function Home() {
   const { posts, ready, upsertPost, deletePost, importPosts } = usePosts();
+  const { guidelines, setGuidelines } = useGuidelines();
   const [view, setView] = useState<ViewMode>("calendar");
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [infoModal, setInfoModal] = useState<"notes" | "charter" | "import-result" | null>(null);
+  const [infoModal, setInfoModal] = useState<"guidelines" | "charter" | "import-result" | null>(null);
   const [importMessage, setImportMessage] = useState("");
   const [connected, setConnected] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -56,7 +58,7 @@ export default function Home() {
   async function handleGenerate(date: string, time: string, customTheme?: string) {
     setGenerating(true);
     try {
-      const post = await createGeneratedPost(date, time, customTheme);
+      const post = await createGeneratedPost(date, time, customTheme, guidelines);
       setEditingPost(post);
     } finally {
       setGenerating(false);
@@ -78,7 +80,7 @@ export default function Home() {
         `${entries.length} thème(s) trouvé(s) dans le fichier.\n\nL'import remplacera le contenu de tout post déjà programmé aux mêmes dates. Continuer ?`
       );
       if (!confirmed) return;
-      const newPosts = await buildPostsFromEntries(entries);
+      const newPosts = await buildPostsFromEntries(entries, guidelines);
       const { added, updated } = importPosts(newPosts);
       setImportMessage(
         `Import terminé : ${added} post(s) ajouté(s), ${updated} post(s) mis à jour (même date déjà programmée).`
@@ -98,7 +100,7 @@ export default function Home() {
         <Header />
 
         <ActionBar
-          onNotes={() => setInfoModal("notes")}
+          onGuidelines={() => setInfoModal("guidelines")}
           onCharter={() => setInfoModal("charter")}
           onGenerate={(theme) => handleGenerate(todayISO(), "09:00", theme)}
           generating={generating}
@@ -157,11 +159,23 @@ export default function Home() {
         />
       )}
 
-      {infoModal === "notes" && (
-        <InfoModal title="Notes" onClose={() => setInfoModal(null)}>
+      {infoModal === "guidelines" && (
+        <InfoModal title="Consignes d'écriture" onClose={() => setInfoModal(null)}>
           <p>
-            Espace libre pour noter vos idées de contenu, angles d&apos;articles ou retours
-            d&apos;équipe. (Fonctionnalité à connecter à votre outil de notes préféré.)
+            Décrivez ici le ton, le style, ce qu&apos;il faut toujours mentionner ou éviter, le
+            public visé… Ces consignes sont envoyées à l&apos;IA à chaque génération de post.
+          </p>
+          <textarea
+            value={guidelines}
+            onChange={(e) => setGuidelines(e.target.value)}
+            rows={6}
+            placeholder="Ex : ton professionnel mais chaleureux, toujours mentionner que Daïmo est basé en Belgique, éviter le jargon technique, s'adresser à des responsables opérationnels de PME…"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+          />
+          <p className="text-xs text-slate-400">
+            Pour que ces consignes soient réellement suivies par une IA, une clé Anthropic
+            (ANTHROPIC_API_KEY) doit être configurée côté serveur, sur Vercel. Sans clé, l&apos;outil
+            utilise son générateur local (gratuit, mais qui ne lit pas ces consignes).
           </p>
         </InfoModal>
       )}

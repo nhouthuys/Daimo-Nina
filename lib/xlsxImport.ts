@@ -1,6 +1,7 @@
 import { readSheet } from "read-excel-file/browser";
 import { CarouselSlide, GraphicCategory, Post, PostFormat } from "./types";
-import { generateContent, pickWeightedFormat } from "./generate";
+import { pickWeightedFormat } from "./generate";
+import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
 
 /** How the "Thème/contenu" cell should be turned into the post's actual copy. */
@@ -163,7 +164,7 @@ function withVideoNote(content: string, videoNote: boolean): string {
  *   loose hint, and the format is picked freely when the sheet didn't specify
  *   one for that row.
  */
-export async function buildPostsFromEntries(entries: ParsedCalendarEntry[]): Promise<Post[]> {
+export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guidelines?: string): Promise<Post[]> {
   const now = new Date().toISOString();
   const posts: Post[] = [];
 
@@ -184,7 +185,7 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[]): Pro
       if (format === "carousel") slideCaptions = splitTextIntoSlides(entry.theme);
     } else {
       const customTheme = entry.type === "theme" ? entry.theme : entry.theme || undefined;
-      const generated = generateContent(format, customTheme);
+      const generated = await generateContentSmart(format, customTheme, guidelines);
       title = generated.title;
       content = generated.content;
       slideCaptions = generated.slides?.map((s) => s.caption);
