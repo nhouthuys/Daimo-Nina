@@ -5,7 +5,7 @@ export interface StockPhoto {
 
 export interface FetchStockPhotosResult {
   ok: boolean;
-  source?: "pexels" | "loremflickr";
+  source?: "pexels" | "loremflickr" | "pixabay";
   photos?: StockPhoto[];
   error?: string;
 }
@@ -15,17 +15,18 @@ export async function fetchStockPhotos(
   count: number,
   width: number,
   height: number,
-  orientation: "landscape" | "portrait" | "square"
+  orientation: "landscape" | "portrait" | "square",
+  style: "photo" | "illustration" = "photo"
 ): Promise<FetchStockPhotosResult> {
   try {
     const res = await fetch("/api/stock-photos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keywords, count, width, height, orientation }),
+      body: JSON.stringify({ keywords, count, width, height, orientation, style }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { ok: false, error: data.error || "Échec de la recherche de photos." };
+      return { ok: false, error: data.error || "Échec de la recherche." };
     }
     return { ok: true, source: data.source, photos: data.photos };
   } catch {

@@ -9,6 +9,7 @@ interface RequestBody {
   width?: number;
   height?: number;
   orientation?: "landscape" | "portrait" | "square";
+  style?: "photo" | "illustration";
 }
 
 interface Photo {
@@ -21,10 +22,24 @@ interface PexelsPhoto {
   alt?: string;
 }
 
+interface PixabayHit {
+  largeImageURL: string;
+  webformatURL: string;
+  tags: string;
+}
+
+const PIXABAY_ORIENTATION: Record<"landscape" | "portrait" | "square", "horizontal" | "vertical" | "all"> = {
+  landscape: "horizontal",
+  portrait: "vertical",
+  square: "all",
+};
+
 /**
- * Looks up real, relevant stock photos for the given keywords. Uses Pexels (real
- * keyword search, needs a free PEXELS_API_KEY) when configured; otherwise falls
- * back to LoremFlickr (no key needed, but only loosely tag-matched).
+ * Looks up real, relevant stock visuals for the given keywords.
+ * "photo" style: Pexels (real keyword search, needs a free PEXELS_API_KEY) when
+ * configured, otherwise LoremFlickr (no key needed, only loosely tag-matched).
+ * "illustration" style: Pixabay (needs a free PIXABAY_API_KEY) — no keyless
+ * fallback exists for illustrations/vectors, so this style requires the key.
  */
 export async function POST(req: NextRequest) {
   let body: RequestBody;
@@ -39,7 +54,38 @@ export async function POST(req: NextRequest) {
   const width = body.width ?? 1600;
   const height = body.height ?? 900;
   const orientation = body.orientation ?? "landscape";
+  const style = body.style ?? "photo";
   const query = keywords.length > 0 ? keywords.join(" ") : "business technology";
+
+  if (style === "illustration") {
+    const pixabayKey = process.env.PIXABAY_API_KEY;
+    if (!pixabayKey) {
+      return NextResponse.json(
+        { error: "Les illustrations nécessitent une clé Pixabay (PIXABAY_API_KEY) configurée sur Vercel." },
+        { status: 501 }
+      );
+    }
+    try {
+      const res = await fetch(
+        `https://pixabay.com/api/?key=${pixabayKey}&q=${encodeURIComponent(query)}&image_type=illustration&per_page=${Math.max(count, 3)}&orientation=${PIXABAY_ORIENTATION[orientation]}`
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { hits?: PixabayHit[] };
+        const photos: Photo[] = (data.hits ?? [])
+          .slice(0, count)
+          .map((h) => ({ url: h.largeImageURL || h.webformatURL, alt: h.tags || query }));
+        if (photos.length > 0) {
+          return NextResponse.json({ ok: true, source: "pixabay", photos });
+        }
+        return NextResponse.json({ error: "Aucune illustration trouvée pour ces mots-clés." }, { status: 404 });
+      }
+      console.error("Pixabay error:", res.status, await res.text().catch(() => ""));
+      return NextResponse.json({ error: "Échec de la recherche d'illustrations." }, { status: 502 });
+    } catch (err) {
+      console.error("Pixabay fetch failed:", err);
+      return NextResponse.json({ error: "Échec de la recherche d'illustrations." }, { status: 502 });
+    }
+  }
 
   const apiKey = process.env.PEXELS_API_KEY;
   if (apiKey) {

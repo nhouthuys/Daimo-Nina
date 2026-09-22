@@ -14,12 +14,20 @@ const ASPECTS: Record<Aspect, { label: string; width: number; height: number; or
   portrait: { label: "Portrait (900×1200)", width: 900, height: 1200, orientation: "portrait" },
 };
 
+type Style = "photo" | "illustration";
+
+const STYLE_LABELS: Record<Style, string> = {
+  photo: "Photo réaliste",
+  illustration: "Illustration",
+};
+
 export default function WebsiteImages() {
   const [text, setText] = useState("");
   const [keywordsInput, setKeywordsInput] = useState("");
   const [aspect, setAspect] = useState<Aspect>("wide");
+  const [style, setStyle] = useState<Style>("photo");
   const [photos, setPhotos] = useState<StockPhoto[]>([]);
-  const [source, setSource] = useState<"pexels" | "loremflickr" | null>(null);
+  const [source, setSource] = useState<"pexels" | "loremflickr" | "pixabay" | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,12 +49,13 @@ export default function WebsiteImages() {
     try {
       const keywords = currentKeywords();
       const { width, height, orientation } = ASPECTS[aspect];
-      const result = await fetchStockPhotos(keywords, 6, width, height, orientation);
+      const result = await fetchStockPhotos(keywords, 6, width, height, orientation, style);
       if (result.ok && result.photos) {
         setPhotos(result.photos);
         setSource(result.source ?? null);
       } else {
-        setError(result.error ?? "Échec de la recherche de photos.");
+        setError(result.error ?? "Échec de la recherche.");
+        setPhotos([]);
       }
     } finally {
       setGenerating(false);
@@ -110,6 +119,33 @@ export default function WebsiteImages() {
 
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Style
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(STYLE_LABELS) as Style[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStyle(s)}
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                    style === s
+                      ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
+                      : "border-slate-200 text-slate-500 hover:border-daimo-blue/30"
+                  }`}
+                >
+                  {STYLE_LABELS[s]}
+                </button>
+              ))}
+            </div>
+            {style === "illustration" && (
+              <p className="mt-1 text-xs text-slate-400">
+                Les illustrations nécessitent une clé Pixabay (PIXABAY_API_KEY) configurée sur
+                Vercel — voir plus bas. Sans elle, la recherche affichera une erreur claire.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
               Format
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -134,7 +170,7 @@ export default function WebsiteImages() {
             disabled={generating}
             className="rounded-full bg-daimo-blue px-4 py-2 text-sm font-medium text-white hover:bg-daimo-blue/90 disabled:cursor-wait disabled:opacity-70"
           >
-            {generating ? "⏳ Recherche…" : "🖼️ Proposer des photos"}
+            {generating ? "⏳ Recherche…" : `🖼️ Proposer des ${style === "photo" ? "photos" : "illustrations"}`}
           </button>
           {error && <p className="text-xs text-daimo-pink">{error}</p>}
         </div>
@@ -144,7 +180,7 @@ export default function WebsiteImages() {
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-slate-700">Résultats</p>
               <button onClick={generate} className="text-xs font-medium text-daimo-blue hover:underline">
-                🔄 Proposer d&apos;autres photos
+                🔄 Proposer d&apos;autres résultats
               </button>
             </div>
             {source === "loremflickr" && (
@@ -178,14 +214,24 @@ export default function WebsiteImages() {
           </div>
         )}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-500 space-y-1">
-          <p className="font-medium text-slate-700">Pour des photos vraiment pertinentes (recommandé)</p>
-          <p>
-            Créez un compte gratuit sur pexels.com/api (sans carte bancaire), copiez la clé API, puis
-            sur Vercel : Project Settings → Environment Variables → ajoutez <code>PEXELS_API_KEY</code>{" "}
-            avec cette clé, et redéployez. Sans cette clé, l&apos;outil utilise un moteur de secours
-            gratuit mais moins précis.
-          </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-500 space-y-3">
+          <div>
+            <p className="font-medium text-slate-700">Pour des photos vraiment pertinentes (recommandé)</p>
+            <p>
+              Créez un compte gratuit sur pexels.com/api (sans carte bancaire), copiez la clé API,
+              puis sur Vercel : Project Settings → Environment Variables → ajoutez{" "}
+              <code>PEXELS_API_KEY</code> avec cette clé, et redéployez. Sans cette clé, l&apos;outil
+              utilise un moteur de secours gratuit mais moins précis.
+            </p>
+          </div>
+          <div>
+            <p className="font-medium text-slate-700">Pour le style « Illustration »</p>
+            <p>
+              Créez un compte gratuit sur pixabay.com/api/docs (sans carte bancaire), copiez la clé,
+              puis ajoutez sur Vercel la variable <code>PIXABAY_API_KEY</code>, et redéployez. Il
+              n&apos;existe pas d&apos;alternative gratuite sans clé pour les illustrations.
+            </p>
+          </div>
         </div>
       </div>
     </main>
