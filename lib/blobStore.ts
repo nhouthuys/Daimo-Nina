@@ -1,5 +1,15 @@
 import { list, put } from "@vercel/blob";
 
+/**
+ * True when Blob storage can be used: either the classic BLOB_READ_WRITE_TOKEN
+ * is set, or the store is connected via OIDC (Vercel then sets BLOB_STORE_ID
+ * and injects short-lived OIDC credentials automatically — no static token
+ * needed, and @vercel/blob picks it up on its own).
+ */
+export function isBlobConfigured(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+}
+
 /** Reads a small JSON blob by exact pathname, or null if it doesn't exist yet. Server-only. */
 export async function readJsonBlob<T>(pathname: string): Promise<T | null> {
   const { blobs } = await list({ prefix: pathname, limit: 1 });

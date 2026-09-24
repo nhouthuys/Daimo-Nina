@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { readJsonBlob, writeJsonBlob } from "@/lib/blobStore";
+import { isBlobConfigured, readJsonBlob, writeJsonBlob } from "@/lib/blobStore";
 import { STORE_PATHNAME, SyncedState } from "@/lib/syncStore";
 import { buildPostEmail } from "@/lib/emailTemplate";
 
@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json({ sent: 0, skipped: 0, note: "Synchronisation non configurée (BLOB_READ_WRITE_TOKEN)." });
+  if (!isBlobConfigured()) {
+    return NextResponse.json({ sent: 0, skipped: 0, note: "Synchronisation non configurée (base Blob non connectée)." });
   }
 
   const store = await readJsonBlob<SyncedState>(STORE_PATHNAME);

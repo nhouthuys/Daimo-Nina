@@ -228,10 +228,9 @@ export default function Home() {
           </p>
           <p className="text-xs text-slate-400">
             Pour que l&apos;envoi <strong>automatique</strong> fonctionne en plus, une base de
-            stockage Vercel Blob (variable BLOB_READ_WRITE_TOKEN, gratuite, créée depuis
-            l&apos;onglet « Storage » de votre projet Vercel) doit aussi être configurée : elle
-            permet au serveur de connaître vos posts programmés, même quand votre navigateur est
-            fermé.
+            stockage Vercel Blob (gratuite, créée puis connectée à ce projet depuis l&apos;onglet
+            « Storage » de votre projet Vercel) doit aussi être configurée : elle permet au serveur
+            de connaître vos posts programmés, même quand votre navigateur est fermé.
           </p>
           <p className="text-xs text-slate-400">
             Sans ces clés, les boutons et l&apos;envoi automatique échouent silencieusement en

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { isBlobConfigured } from "@/lib/blobStore";
 
 export const runtime = "nodejs";
 
@@ -11,9 +12,9 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024;
  * into the same "photo déjà existante" field that already accepts any URL.
  */
 export async function POST(req: NextRequest) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!isBlobConfigured()) {
     return NextResponse.json(
-      { error: "L'upload n'est pas configuré (BLOB_READ_WRITE_TOKEN manquante)." },
+      { error: "L'upload n'est pas configuré (base Blob non connectée à ce projet)." },
       { status: 501 }
     );
   }

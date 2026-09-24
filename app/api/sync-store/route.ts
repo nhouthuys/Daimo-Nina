@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeJsonBlob } from "@/lib/blobStore";
+import { isBlobConfigured, writeJsonBlob } from "@/lib/blobStore";
 import { STORE_PATHNAME } from "@/lib/syncStore";
 
 export const runtime = "nodejs";
@@ -11,9 +11,9 @@ export const runtime = "nodejs";
  * change; failures are non-fatal, the app works from localStorage regardless.
  */
 export async function POST(req: NextRequest) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!isBlobConfigured()) {
     return NextResponse.json(
-      { error: "La synchronisation n'est pas configurée (BLOB_READ_WRITE_TOKEN manquante)." },
+      { error: "La synchronisation n'est pas configurée (base Blob non connectée à ce projet)." },
       { status: 501 }
     );
   }
