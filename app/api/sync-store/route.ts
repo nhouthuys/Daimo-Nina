@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("sync-store error:", err);
-    return NextResponse.json({ error: "Échec de la synchronisation." }, { status: 502 });
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Échec de la synchronisation : ${detail}` }, { status: 502 });
   }
 }

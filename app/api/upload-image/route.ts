@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, url: blob.url });
   } catch (err) {
     console.error("upload-image error:", err);
-    return NextResponse.json({ error: "Échec de l'upload." }, { status: 502 });
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Échec de l'upload : ${detail}` }, { status: 502 });
   }
 }
