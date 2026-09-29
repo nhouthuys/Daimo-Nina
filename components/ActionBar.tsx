@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FORMAT_LABELS, PostFormat } from "@/lib/types";
 
 interface ActionBarProps {
   onGuidelines: () => void;
   onCharter: () => void;
-  onGenerate: (theme?: string) => void;
+  onGenerate: (theme: string | undefined, format: PostFormat) => void;
   onNewPost: () => void;
   onImportFile: (file: File) => void;
   generating?: boolean;
@@ -48,6 +49,7 @@ export function ActionBar({
   importing = false,
 }: ActionBarProps) {
   const [theme, setTheme] = useState("");
+  const [format, setFormat] = useState<PostFormat>("article");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -74,17 +76,34 @@ export function ActionBar({
         </PillButton>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-400">1. Format</span>
+        {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFormat(f)}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+              format === f
+                ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
+                : "border-slate-200 text-slate-600 hover:border-daimo-blue/30"
+            }`}
+          >
+            {FORMAT_LABELS[f]}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-400">2. Contenu</span>
         <input
           value={theme}
           onChange={(e) => setTheme(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !generating) onGenerate(theme);
+            if (e.key === "Enter" && !generating) onGenerate(theme, format);
           }}
           placeholder="Thème (ex : notre partenariat avec…) ou collez directement un texte déjà rédigé — les deux fonctionnent"
           className="min-w-[240px] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
         />
-        <PillButton onClick={() => onGenerate(theme)} disabled={generating}>
-          {generating ? "⏳ Génération…" : "✨ Générer un post"}
+        <PillButton onClick={() => onGenerate(theme, format)} disabled={generating}>
+          {generating ? "⏳ Génération…" : "3. ✨ Générer"}
         </PillButton>
       </div>
     </div>

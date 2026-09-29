@@ -123,7 +123,7 @@ export default function Home() {
         <ActionBar
           onGuidelines={() => setInfoModal("guidelines")}
           onCharter={() => setInfoModal("charter")}
-          onGenerate={(theme) => handleGenerate(todayISO(), "09:00", theme)}
+          onGenerate={(theme, format) => handleGenerate(todayISO(), "09:00", theme, undefined, format)}
           generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
           onImportFile={handleImportFile}

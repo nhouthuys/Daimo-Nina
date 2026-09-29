@@ -226,10 +226,31 @@ export function PostModal({
   return (
     <Modal title={isEditing ? "Modifier le post" : "Nouveau post"} onClose={onClose} wide>
       <div className="space-y-5">
+        <div>
+          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            1. Format
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFormat(f)}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  format === f
+                    ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
+                    : "border-slate-200 text-slate-600 hover:border-daimo-blue/30"
+                }`}
+              >
+                {FORMAT_LABELS[f]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {onRegenerate && (
           <div className="space-y-2 rounded-lg border border-daimo-blue/20 bg-daimo-blue/5 p-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-daimo-blue">🔁 Régénérer ce post</span>
+              <span className="text-xs font-medium text-daimo-blue">2. Contenu — écrire ou générer</span>
               <button
                 onClick={() => onRegenerate()}
                 title="Génère un post sur un thème et un format aléatoires, sans tenir compte du champ ni du format ci-dessus"
@@ -274,27 +295,6 @@ export function PostModal({
             {emailFeedback.message}
           </p>
         )}
-
-        <div>
-          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Format
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFormat(f)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                  format === f
-                    ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
-                    : "border-slate-200 text-slate-600 hover:border-daimo-blue/30"
-                }`}
-              >
-                {FORMAT_LABELS[f]}
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div>
           <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
