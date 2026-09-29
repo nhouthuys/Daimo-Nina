@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildStockPhotoUrl } from "@/lib/stockPhoto";
 
 export const runtime = "nodejs";
 
@@ -36,10 +35,10 @@ const PIXABAY_ORIENTATION: Record<"landscape" | "portrait" | "square", "horizont
 
 /**
  * Looks up real, relevant stock visuals for the given keywords.
- * "photo" style: Pexels (real keyword search, needs a free PEXELS_API_KEY) when
- * configured, otherwise LoremFlickr (no key needed, only loosely tag-matched).
- * "illustration" style: Pixabay (needs a free PIXABAY_API_KEY) — no keyless
- * fallback exists for illustrations/vectors, so this style requires the key.
+ * "photo" style: Pexels (real keyword search, needs a free PEXELS_API_KEY).
+ * "illustration" style: Pixabay (needs a free PIXABAY_API_KEY).
+ * Neither style has a keyless fallback: without the matching key, this
+ * returns a clear error instead of a degraded result.
  */
 export async function POST(req: NextRequest) {
   let body: RequestBody;
@@ -51,8 +50,6 @@ export async function POST(req: NextRequest) {
 
   const keywords = (body.keywords ?? []).filter(Boolean);
   const count = body.count ?? 6;
-  const width = body.width ?? 1600;
-  const height = body.height ?? 900;
   const orientation = body.orientation ?? "landscape";
   const style = body.style ?? "photo";
   const query = keywords.length > 0 ? keywords.join(" ") : "business technology";
@@ -88,29 +85,30 @@ export async function POST(req: NextRequest) {
   }
 
   const apiKey = process.env.PEXELS_API_KEY;
-  if (apiKey) {
-    try {
-      const res = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=${count}&orientation=${orientation}`,
-        { headers: { Authorization: apiKey } }
-      );
-      if (res.ok) {
-        const data = (await res.json()) as { photos?: PexelsPhoto[] };
-        const photos: Photo[] = (data.photos ?? []).map((p) => ({ url: p.src.large, alt: query }));
-        if (photos.length > 0) {
-          return NextResponse.json({ ok: true, source: "pexels", photos });
-        }
-      } else {
-        console.error("Pexels error:", res.status, await res.text().catch(() => ""));
-      }
-    } catch (err) {
-      console.error("Pexels fetch failed:", err);
-    }
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Les photos nécessitent une clé Pexels (PEXELS_API_KEY) configurée sur Vercel." },
+      { status: 501 }
+    );
   }
 
-  const photos: Photo[] = Array.from({ length: count }, () => ({
-    url: buildStockPhotoUrl(keywords, width, height),
-    alt: query,
-  }));
-  return NextResponse.json({ ok: true, source: "loremflickr", photos });
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=${count}&orientation=${orientation}`,
+      { headers: { Authorization: apiKey } }
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { photos?: PexelsPhoto[] };
+      const photos: Photo[] = (data.photos ?? []).map((p) => ({ url: p.src.large, alt: query }));
+      if (photos.length > 0) {
+        return NextResponse.json({ ok: true, source: "pexels", photos });
+      }
+      return NextResponse.json({ error: "Aucune photo trouvée pour ces mots-clés." }, { status: 404 });
+    }
+    console.error("Pexels error:", res.status, await res.text().catch(() => ""));
+    return NextResponse.json({ error: "Échec de la recherche de photos." }, { status: 502 });
+  } catch (err) {
+    console.error("Pexels fetch failed:", err);
+    return NextResponse.json({ error: "Échec de la recherche de photos." }, { status: 502 });
+  }
 }

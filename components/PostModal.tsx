@@ -54,6 +54,8 @@ export function PostModal({
   const [visualStyle, setVisualStyle] = useState<VisualStyle>(initial.visualStyle ?? "template");
   const [candidates, setCandidates] = useState<{ style: VisualStyle; url: string }[]>([]);
   const [proposing, setProposing] = useState(false);
+  const [visualError, setVisualError] = useState<string | null>(null);
+  const [slideImageError, setSlideImageError] = useState<{ id: string; message: string } | null>(null);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [status, setStatus] = useState<PostStatus>(initial.status);
@@ -146,33 +148,48 @@ export function PostModal({
   }
 
   async function regenerateSlideImage(id: string, caption: string) {
-    const url = await generatePostGraphic({
-      category: graphicCategory,
-      headline: caption || "Your text here",
-      slideIndex: slides.findIndex((s) => s.id === id) + 1,
-      slideCount: slides.length,
-      visual: visualStyle,
-    });
-    setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
+    setSlideImageError(null);
+    try {
+      const url = await generatePostGraphic({
+        category: graphicCategory,
+        headline: caption || "Your text here",
+        slideIndex: slides.findIndex((s) => s.id === id) + 1,
+        slideCount: slides.length,
+        visual: visualStyle,
+      });
+      setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
+    } catch (err) {
+      setSlideImageError({ id, message: err instanceof Error ? err.message : "Échec de la génération de l'image." });
+    }
   }
 
   async function proposeVisuals() {
     setProposing(true);
+    setVisualError(null);
     try {
       const base = { category: graphicCategory, headline: title || "Your title here", highlight: DEFAULT_HIGHLIGHT[graphicCategory] };
-      const [tpl, photoA, photoB] = await Promise.all([
+      const labels: VisualStyle[] = ["template", "photo", "photo"];
+      const results = await Promise.allSettled([
         generatePostGraphic({ ...base, visual: "template" }),
         generatePostGraphic({ ...base, visual: "photo" }),
         generatePostGraphic({ ...base, visual: "photo" }),
       ]);
-      const options: { style: VisualStyle; url: string }[] = [
-        { style: "template", url: tpl },
-        { style: "photo", url: photoA },
-        { style: "photo", url: photoB },
-      ];
+      const options: { style: VisualStyle; url: string }[] = [];
+      const errors: string[] = [];
+      results.forEach((r, i) => {
+        if (r.status === "fulfilled") {
+          options.push({ style: labels[i], url: r.value });
+        } else {
+          const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
+          if (!errors.includes(message)) errors.push(message);
+        }
+      });
       setCandidates(options);
-      setImageUrl(options[0].url);
-      setVisualStyle(options[0].style);
+      if (options.length > 0) {
+        setImageUrl(options[0].url);
+        setVisualStyle(options[0].style);
+      }
+      if (errors.length > 0) setVisualError(errors.join(" "));
     } finally {
       setProposing(false);
     }
@@ -373,6 +390,7 @@ export function PostModal({
                   ))}
                 </div>
               )}
+              {visualError && <p className="mt-1 text-xs text-daimo-pink">{visualError}</p>}
               <p className="mt-1 text-xs text-slate-400">
                 Un visuel de type PowerPoint et deux photos de personnes en contexte sont proposés à chaque
                 clic : cliquez sur l&apos;une des vignettes pour la choisir. Tout est généré côté
@@ -511,6 +529,9 @@ export function PostModal({
                   </div>
                   {uploadError?.id === slide.id && (
                     <p className="ml-7 text-xs text-daimo-pink">{uploadError.message}</p>
+                  )}
+                  {slideImageError?.id === slide.id && (
+                    <p className="ml-7 text-xs text-daimo-pink">{slideImageError.message}</p>
                   )}
                 </div>
               ))}

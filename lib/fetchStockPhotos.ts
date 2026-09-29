@@ -5,7 +5,7 @@ export interface StockPhoto {
 
 export interface FetchStockPhotosResult {
   ok: boolean;
-  source?: "pexels" | "loremflickr" | "pixabay";
+  source?: "pexels" | "pixabay";
   photos?: StockPhoto[];
   error?: string;
 }

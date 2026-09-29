@@ -81,6 +81,8 @@ export default function Home() {
     try {
       const post = await createGeneratedPost(date, time, customTheme, guidelines, forcedFormat);
       setEditingPost(replacing ? { ...post, id: replacing.id, createdAt: replacing.createdAt } : post);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Échec de la génération du post.");
     } finally {
       setGenerating(false);
     }
@@ -197,9 +199,9 @@ export default function Home() {
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
           />
           <p className="text-xs text-slate-400">
-            Pour que ces consignes soient réellement suivies par une IA, une clé Anthropic
-            (ANTHROPIC_API_KEY) doit être configurée côté serveur, sur Vercel. Sans clé, l&apos;outil
-            utilise son générateur local (gratuit, mais qui ne lit pas ces consignes).
+            La génération de post nécessite une clé Anthropic (ANTHROPIC_API_KEY) configurée côté
+            serveur, sur Vercel. Sans clé, la génération affiche une erreur claire au lieu de
+            produire un résultat générique : il n&apos;y a pas de générateur de secours.
           </p>
 
           <hr className="border-slate-100" />

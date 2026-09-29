@@ -1,17 +1,18 @@
 import { CarouselSlide, GraphicCategory, PostFormat } from "./types";
-import { GeneratedContent, generateContent } from "./generate";
+import { GeneratedContent } from "./generate";
 
 interface AiResponse {
-  title: string;
-  content: string;
+  title?: string;
+  content?: string;
   slides?: string[] | null;
   category?: string;
   highlight?: string;
+  error?: string;
 }
 
 const CATEGORIES: GraphicCategory[] = ["tip", "client", "hiring"];
 
-function toGeneratedContent(ai: AiResponse, format: PostFormat): GeneratedContent {
+function toGeneratedContent(ai: { title: string; content: string } & AiResponse, format: PostFormat): GeneratedContent {
   const category = CATEGORIES.includes(ai.category as GraphicCategory) ? (ai.category as GraphicCategory) : "client";
   const slides: CarouselSlide[] | undefined =
     format === "carousel" && Array.isArray(ai.slides) && ai.slides.length > 0
@@ -28,30 +29,32 @@ function toGeneratedContent(ai: AiResponse, format: PostFormat): GeneratedConten
   };
 }
 
-async function callAi(format: PostFormat, theme?: string, guidelines?: string): Promise<GeneratedContent | null> {
+async function callAi(format: PostFormat, theme?: string, guidelines?: string): Promise<GeneratedContent> {
+  let res: Response;
   try {
-    const res = await fetch("/api/generate-post", {
+    res = await fetch("/api/generate-post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format, theme, guidelines }),
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as AiResponse;
-    if (typeof data.title !== "string" || typeof data.content !== "string") return null;
-    return toGeneratedContent(data, format);
   } catch {
-    return null;
+    throw new Error("Impossible de contacter le serveur de génération (problème réseau).");
   }
+  const data = (await res.json().catch(() => ({}))) as AiResponse;
+  if (!res.ok) {
+    throw new Error(data.error || "La génération IA a échoué.");
+  }
+  if (typeof data.title !== "string" || typeof data.content !== "string") {
+    throw new Error("Réponse invalide de l'IA.");
+  }
+  return toGeneratedContent(data as { title: string; content: string } & AiResponse, format);
 }
 
 /**
- * Generates post content, preferring the real Claude API (which can actually
- * follow arbitrary writing guidelines) and transparently falling back to the
- * local template engine when the API isn't configured or the call fails, so
- * the app keeps working either way.
+ * Generates post content via the Claude API. No local fallback: if
+ * ANTHROPIC_API_KEY isn't configured on the server, or the call fails, this
+ * throws a descriptive error instead of silently degrading.
  */
 export async function generateContentSmart(format: PostFormat, theme?: string, guidelines?: string): Promise<GeneratedContent> {
-  const ai = await callAi(format, theme, guidelines);
-  if (ai) return ai;
-  return generateContent(format, theme);
+  return callAi(format, theme, guidelines);
 }

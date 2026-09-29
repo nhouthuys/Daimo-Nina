@@ -27,7 +27,6 @@ export default function WebsiteImages() {
   const [aspect, setAspect] = useState<Aspect>("wide");
   const [style, setStyle] = useState<Style>("photo");
   const [photos, setPhotos] = useState<StockPhoto[]>([]);
-  const [source, setSource] = useState<"pexels" | "loremflickr" | "pixabay" | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +51,6 @@ export default function WebsiteImages() {
       const result = await fetchStockPhotos(keywords, 6, width, height, orientation, style);
       if (result.ok && result.photos) {
         setPhotos(result.photos);
-        setSource(result.source ?? null);
       } else {
         setError(result.error ?? "Échec de la recherche.");
         setPhotos([]);
@@ -136,12 +134,11 @@ export default function WebsiteImages() {
                 </button>
               ))}
             </div>
-            {style === "illustration" && (
-              <p className="mt-1 text-xs text-slate-400">
-                Les illustrations nécessitent une clé Pixabay (PIXABAY_API_KEY) configurée sur
-                Vercel — voir plus bas. Sans elle, la recherche affichera une erreur claire.
-              </p>
-            )}
+            <p className="mt-1 text-xs text-slate-400">
+              {style === "illustration"
+                ? "Les illustrations nécessitent une clé Pixabay (PIXABAY_API_KEY) configurée sur Vercel — voir plus bas. Sans elle, la recherche affichera une erreur claire."
+                : "Les photos nécessitent une clé Pexels (PEXELS_API_KEY) configurée sur Vercel — voir plus bas. Sans elle, la recherche affichera une erreur claire."}
+            </p>
           </div>
 
           <div>
@@ -183,13 +180,6 @@ export default function WebsiteImages() {
                 🔄 Proposer d&apos;autres résultats
               </button>
             </div>
-            {source === "loremflickr" && (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                Résultats via le moteur gratuit de secours (mots-clés approximatifs). Pour des
-                résultats vraiment pertinents, configurez une clé Pexels (PEXELS_API_KEY, gratuite,
-                sans carte bancaire) sur Vercel — voir plus bas.
-              </p>
-            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {photos.map((photo, i) => (
                 <div key={i} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -216,20 +206,20 @@ export default function WebsiteImages() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-500 space-y-3">
           <div>
-            <p className="font-medium text-slate-700">Pour des photos vraiment pertinentes (recommandé)</p>
+            <p className="font-medium text-slate-700">Pour le style « Photo réaliste » (obligatoire)</p>
             <p>
               Créez un compte gratuit sur pexels.com/api (sans carte bancaire), copiez la clé API,
               puis sur Vercel : Project Settings → Environment Variables → ajoutez{" "}
-              <code>PEXELS_API_KEY</code> avec cette clé, et redéployez. Sans cette clé, l&apos;outil
-              utilise un moteur de secours gratuit mais moins précis.
+              <code>PEXELS_API_KEY</code> avec cette clé, et redéployez. Sans cette clé, la
+              recherche affiche une erreur claire au lieu de résultats approximatifs.
             </p>
           </div>
           <div>
-            <p className="font-medium text-slate-700">Pour le style « Illustration »</p>
+            <p className="font-medium text-slate-700">Pour le style « Illustration » (obligatoire)</p>
             <p>
               Créez un compte gratuit sur pixabay.com/api/docs (sans carte bancaire), copiez la clé,
-              puis ajoutez sur Vercel la variable <code>PIXABAY_API_KEY</code>, et redéployez. Il
-              n&apos;existe pas d&apos;alternative gratuite sans clé pour les illustrations.
+              puis ajoutez sur Vercel la variable <code>PIXABAY_API_KEY</code>, et redéployez. Sans
+              cette clé, la recherche affiche une erreur claire.
             </p>
           </div>
         </div>

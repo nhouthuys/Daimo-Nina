@@ -1,4 +1,5 @@
 import { GraphicCategory, VisualStyle } from "./types";
+import { fetchStockPhotos } from "./fetchStockPhotos";
 
 const FONT_STACK = "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
@@ -53,14 +54,19 @@ function loadImage(src: string, crossOrigin?: "anonymous"): Promise<HTMLImageEle
 }
 
 /**
- * Builds a URL for a real, royalty-free stock photo matching the category, from a
- * keyless photo service (no API key to configure). A random seed is appended so a
- * different photo comes back each time instead of always the same cached one.
+ * Looks up a real, royalty-free stock photo matching the category via the
+ * Pexels-backed /api/stock-photos route. Throws a descriptive error when
+ * PEXELS_API_KEY isn't configured on the server or the search fails — there
+ * is no keyless fallback.
  */
-function buildStockPhotoUrl(category: GraphicCategory, width: number, height: number): string {
-  const seed = Math.floor(Math.random() * 100000);
-  const keywords = THEMES[category].photoKeywords;
-  return `https://loremflickr.com/${width}/${height}/${keywords}?random=${seed}`;
+async function fetchCategoryPhotoUrl(category: GraphicCategory, width: number, height: number): Promise<string> {
+  const keywords = THEMES[category].photoKeywords.split(",");
+  const orientation = width === height ? "square" : width > height ? "landscape" : "portrait";
+  const result = await fetchStockPhotos(keywords, 6, width, height, orientation, "photo");
+  if (!result.ok || !result.photos || result.photos.length === 0) {
+    throw new Error(result.error ?? "Aucune photo trouvée pour cette catégorie.");
+  }
+  return result.photos[Math.floor(Math.random() * result.photos.length)].url;
 }
 
 /** Draws `img` covering the full `w`×`h` box, cropping overflow like CSS `object-fit: cover`. */
@@ -167,18 +173,18 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
   if (!ctx) return "";
 
   if (visual === "photo") {
+    const photoUrl = await fetchCategoryPhotoUrl(opts.category, width, height);
+    let photoImg: HTMLImageElement;
     try {
-      const photoUrl = buildStockPhotoUrl(opts.category, width, height);
-      const photoImg = await loadImage(photoUrl, "anonymous");
-      // 1. Real photo, cropped to fill the canvas.
-      drawImageCover(ctx, photoImg, width, height);
-      // 2. Stronger dark scrim — photos need more contrast than a flat gradient for the text to read.
-      ctx.fillStyle = "rgba(6, 10, 24, 0.5)";
-      ctx.fillRect(0, 0, width, height);
+      photoImg = await loadImage(photoUrl, "anonymous");
     } catch {
-      // The stock photo service is unreachable or blocked its cross-origin canvas read — fall back to the template.
-      return generatePostGraphic({ ...opts, visual: "template" });
+      throw new Error("La photo trouvée n'a pas pu être chargée (service indisponible ou bloqué).");
     }
+    // 1. Real photo, cropped to fill the canvas.
+    drawImageCover(ctx, photoImg, width, height);
+    // 2. Stronger dark scrim — photos need more contrast than a flat gradient for the text to read.
+    ctx.fillStyle = "rgba(6, 10, 24, 0.5)";
+    ctx.fillRect(0, 0, width, height);
   } else {
     // 1. Brand gradient background.
     const gradient = ctx.createLinearGradient(0, 0, width, height);
@@ -282,8 +288,10 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
   try {
     return canvas.toDataURL("image/jpeg", 0.9);
   } catch {
-    // A cross-origin photo without permissive CORS headers taints the canvas — fall back to the template.
-    if (visual === "photo") return generatePostGraphic({ ...opts, visual: "template" });
-    throw new Error("Unable to generate the post image.");
+    throw new Error(
+      visual === "photo"
+        ? "Impossible de générer l'image : la photo n'autorise pas cet usage (CORS)."
+        : "Impossible de générer l'image."
+    );
   }
 }
