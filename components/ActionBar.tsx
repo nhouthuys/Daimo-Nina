@@ -7,6 +7,7 @@ import { Modal } from "./Modal";
 interface ActionBarProps {
   onGuidelines: () => void;
   onCharter: () => void;
+  onPromptSettings: () => void;
   onGenerate: (theme: string | undefined, format: PostFormat) => void;
   onNewPost: () => void;
   onImportFile: (file: File) => void;
@@ -43,6 +44,7 @@ function PillButton({
 export function ActionBar({
   onGuidelines,
   onCharter,
+  onPromptSettings,
   onGenerate,
   onNewPost,
   onImportFile,
@@ -63,6 +65,7 @@ export function ActionBar({
     <div className="flex flex-wrap items-center gap-2">
       <PillButton onClick={onGuidelines}>🧭 Consignes d&apos;écriture</PillButton>
       <PillButton onClick={onCharter}>🎨 Charte graphique</PillButton>
+      <PillButton onClick={onPromptSettings}>🧠 Prompt IA</PillButton>
       <PillButton onClick={() => fileInputRef.current?.click()} disabled={importing}>
         {importing ? "⏳ Import…" : "📥 Importer un calendrier"}
       </PillButton>

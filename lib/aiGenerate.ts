@@ -29,13 +29,19 @@ function toGeneratedContent(ai: { title: string; content: string } & AiResponse,
   };
 }
 
-async function callAi(format: PostFormat, theme?: string, guidelines?: string): Promise<GeneratedContent> {
+async function callAi(
+  format: PostFormat,
+  theme?: string,
+  guidelines?: string,
+  brandPrompt?: string,
+  formatGuidance?: string
+): Promise<GeneratedContent> {
   let res: Response;
   try {
     res = await fetch("/api/generate-post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ format, theme, guidelines }),
+      body: JSON.stringify({ format, theme, guidelines, brandPrompt, formatGuidance }),
     });
   } catch {
     throw new Error("Impossible de contacter le serveur de génération (problème réseau).");
@@ -54,7 +60,17 @@ async function callAi(format: PostFormat, theme?: string, guidelines?: string): 
  * Generates post content via the Claude API. No local fallback: if
  * ANTHROPIC_API_KEY isn't configured on the server, or the call fails, this
  * throws a descriptive error instead of silently degrading.
+ *
+ * `brandPrompt`/`formatGuidance` are the user-editable overrides for the two
+ * prompt blocks (brand identity, and this format's guidance); omit to use
+ * the server's defaults.
  */
-export async function generateContentSmart(format: PostFormat, theme?: string, guidelines?: string): Promise<GeneratedContent> {
-  return callAi(format, theme, guidelines);
+export async function generateContentSmart(
+  format: PostFormat,
+  theme?: string,
+  guidelines?: string,
+  brandPrompt?: string,
+  formatGuidance?: string
+): Promise<GeneratedContent> {
+  return callAi(format, theme, guidelines, brandPrompt, formatGuidance);
 }

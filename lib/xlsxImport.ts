@@ -133,8 +133,16 @@ export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry
  * - "ai": the tool picks everything; the cell, if not empty, is used as a
  *   loose hint, and the format is picked freely when the sheet didn't specify
  *   one for that row.
+ *
+ * `brandPrompt`/`formatGuidance` are the user-editable overrides for the two
+ * Claude prompt blocks; `formatGuidance` is keyed by format, resolved per row.
  */
-export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guidelines?: string): Promise<Post[]> {
+export async function buildPostsFromEntries(
+  entries: ParsedCalendarEntry[],
+  guidelines?: string,
+  brandPrompt?: string,
+  formatGuidance?: Record<PostFormat, string>
+): Promise<Post[]> {
   const now = new Date().toISOString();
   const posts: Post[] = [];
 
@@ -155,7 +163,7 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guid
       if (format === "carousel") slideCaptions = splitTextIntoSlides(entry.theme);
     } else {
       const customTheme = entry.type === "theme" ? entry.theme : entry.theme || undefined;
-      const generated = await generateContentSmart(format, customTheme, guidelines);
+      const generated = await generateContentSmart(format, customTheme, guidelines, brandPrompt, formatGuidance?.[format]);
       title = generated.title;
       content = generated.content;
       slideCaptions = generated.slides?.map((s) => s.caption);

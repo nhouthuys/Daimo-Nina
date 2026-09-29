@@ -30,19 +30,25 @@ function contentFromFinishedText(text: string, format: PostFormat): GeneratedCon
  *
  * `forcedFormat`, when given, keeps the format the caller already chose (e.g.
  * regenerating a post whose format is set in the editor) instead of rerolling it.
+ *
+ * `brandPrompt`/`formatGuidance` are the user-editable overrides for the two
+ * Claude prompt blocks; `formatGuidance` is keyed by format, and only the
+ * entry for the format actually used here is sent.
  */
 export async function createGeneratedPost(
   date: string,
   time: string,
   customTheme?: string,
   guidelines?: string,
-  forcedFormat?: PostFormat
+  forcedFormat?: PostFormat,
+  brandPrompt?: string,
+  formatGuidance?: Record<PostFormat, string>
 ): Promise<Post> {
   const format = forcedFormat ?? pickWeightedFormat();
   const generated =
     customTheme && isFinishedText(customTheme)
       ? contentFromFinishedText(customTheme, format)
-      : await generateContentSmart(format, customTheme, guidelines);
+      : await generateContentSmart(format, customTheme, guidelines, brandPrompt, formatGuidance?.[format]);
   const now = new Date().toISOString();
 
   const post: Post = {

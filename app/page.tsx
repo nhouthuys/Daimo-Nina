@@ -12,11 +12,13 @@ import { PostModal } from "@/components/PostModal";
 import { InfoModal } from "@/components/InfoModal";
 import { FormatLegend } from "@/components/PostBadge";
 import { usePosts } from "@/lib/usePosts";
-import { Post } from "@/lib/types";
+import { FORMAT_LABELS, Post, PostFormat } from "@/lib/types";
 import { todayISO } from "@/lib/date";
 import { createGeneratedPost } from "@/lib/autoGenerate";
 import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
 import { useGuidelines } from "@/lib/useGuidelines";
+import { useBrandPrompt, useFormatGuidance } from "@/lib/usePromptSettings";
+import { DEFAULT_BRAND_PROMPT, DEFAULT_FORMAT_GUIDANCE } from "@/lib/promptDefaults";
 import { useReviewEmail } from "@/lib/useReviewEmail";
 import { pushSyncedState } from "@/lib/syncStore";
 
@@ -38,6 +40,8 @@ function emptyPost(date: string): Post {
 export default function Home() {
   const { posts, ready, upsertPost, deletePost, importPosts } = usePosts();
   const { guidelines, setGuidelines } = useGuidelines();
+  const { brandPrompt, setBrandPrompt } = useBrandPrompt();
+  const { formatGuidance, setFormatGuidance } = useFormatGuidance();
   const { email: reviewEmail, setEmail: setReviewEmail } = useReviewEmail();
   const [view, setView] = useState<ViewMode>("calendar");
   const [cursor, setCursor] = useState(() => {
@@ -45,7 +49,8 @@ export default function Home() {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [infoModal, setInfoModal] = useState<"guidelines" | "charter" | "import-result" | null>(null);
+  const [infoModal, setInfoModal] = useState<"guidelines" | "charter" | "prompt" | "import-result" | null>(null);
+  const [promptFormatTab, setPromptFormatTab] = useState<PostFormat>("article");
   const [importMessage, setImportMessage] = useState("");
   const [connected, setConnected] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -79,7 +84,7 @@ export default function Home() {
   ) {
     setGenerating(true);
     try {
-      const post = await createGeneratedPost(date, time, customTheme, guidelines, forcedFormat);
+      const post = await createGeneratedPost(date, time, customTheme, guidelines, forcedFormat, brandPrompt, formatGuidance);
       setEditingPost(replacing ? { ...post, id: replacing.id, createdAt: replacing.createdAt } : post);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Échec de la génération du post.");
@@ -103,7 +108,7 @@ export default function Home() {
         `${entries.length} thème(s) trouvé(s) dans le fichier.\n\nL'import remplacera le contenu de tout post déjà programmé aux mêmes dates. Continuer ?`
       );
       if (!confirmed) return;
-      const newPosts = await buildPostsFromEntries(entries, guidelines);
+      const newPosts = await buildPostsFromEntries(entries, guidelines, brandPrompt, formatGuidance);
       const { added, updated } = importPosts(newPosts);
       setImportMessage(
         `Import terminé : ${added} post(s) ajouté(s), ${updated} post(s) mis à jour (même date déjà programmée).`
@@ -125,6 +130,7 @@ export default function Home() {
         <ActionBar
           onGuidelines={() => setInfoModal("guidelines")}
           onCharter={() => setInfoModal("charter")}
+          onPromptSettings={() => setInfoModal("prompt")}
           onGenerate={(theme, format) => handleGenerate(todayISO(), "09:00", theme, undefined, format)}
           generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
@@ -265,6 +271,89 @@ export default function Home() {
           </div>
           <p className="text-xs text-slate-400">
             Typographies : Exo 2 (titres), Exo (texte courant), Calibri en substitution.
+          </p>
+        </InfoModal>
+      )}
+
+      {infoModal === "prompt" && (
+        <InfoModal title="Prompt IA (avancé)" onClose={() => setInfoModal(null)}>
+          <p>
+            C&apos;est exactement le texte envoyé à Claude pour écrire un post, en deux blocs
+            modifiables. Laissez un champ vide pour revenir au texte par défaut.
+          </p>
+
+          <label className="block text-sm font-medium text-slate-700">
+            Bloc 1 — Identité de marque &amp; règles d&apos;écriture
+          </label>
+          <p className="text-xs text-slate-400">
+            Envoyé avant chaque génération, quel que soit le format.
+          </p>
+          <textarea
+            value={brandPrompt}
+            onChange={(e) => setBrandPrompt(e.target.value)}
+            rows={10}
+            placeholder={DEFAULT_BRAND_PROMPT}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+          />
+          {brandPrompt && (
+            <button
+              onClick={() => setBrandPrompt("")}
+              className="text-xs font-medium text-daimo-blue hover:underline"
+            >
+              ↺ Revenir au texte par défaut
+            </button>
+          )}
+
+          <hr className="border-slate-100" />
+
+          <label className="block text-sm font-medium text-slate-700">
+            Bloc 2 — Instructions par format
+          </label>
+          <p className="text-xs text-slate-400">
+            Un bloc différent par format : les contraintes de longueur reflètent l&apos;espace
+            réel sur le visuel généré (ex. le titre d&apos;un post « Image » tient sur 4 lignes).
+            Les modifier sans tenir compte de ça peut produire un texte qui déborde du visuel.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setPromptFormatTab(f)}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                  promptFormatTab === f
+                    ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
+                    : "border-slate-200 text-slate-500 hover:border-daimo-blue/30"
+                }`}
+              >
+                {FORMAT_LABELS[f]}
+              </button>
+            ))}
+          </div>
+          <textarea
+            key={promptFormatTab}
+            value={formatGuidance[promptFormatTab]}
+            onChange={(e) => setFormatGuidance(promptFormatTab, e.target.value)}
+            rows={8}
+            placeholder={DEFAULT_FORMAT_GUIDANCE[promptFormatTab]}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+          />
+          {formatGuidance[promptFormatTab] && (
+            <button
+              onClick={() => setFormatGuidance(promptFormatTab, "")}
+              className="text-xs font-medium text-daimo-blue hover:underline"
+            >
+              ↺ Revenir au texte par défaut ({FORMAT_LABELS[promptFormatTab].toLowerCase()})
+            </button>
+          )}
+
+          <hr className="border-slate-100" />
+
+          <p className="text-xs text-slate-400">
+            La charte graphique (couleurs, polices) n&apos;a pas sa place ici : Claude n&apos;écrit
+            que du texte, jamais de pixels. Le rendu du template (couleurs par catégorie) reste
+            géré directement par l&apos;outil. Le jour où la génération d&apos;image/vidéo via
+            Artlist sera branchée, c&apos;est la requête envoyée à Artlist, pas ce prompt, qui
+            devra porter la charte graphique.
           </p>
         </InfoModal>
       )}
