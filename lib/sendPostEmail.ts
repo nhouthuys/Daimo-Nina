@@ -20,6 +20,7 @@ export async function sendPostEmail(post: Post, to: string): Promise<SendPostEma
         time: post.time,
         imageUrl: post.imageUrl,
         slides: post.slides?.map((s) => ({ caption: s.caption, imageUrl: s.imageUrl })),
+        images: post.images,
       }),
     });
     const data = await res.json().catch(() => ({}));

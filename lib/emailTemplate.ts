@@ -1,8 +1,4 @@
-const FORMAT_LABELS: Record<string, string> = {
-  article: "Article",
-  image: "Image + texte",
-  carousel: "Carrousel",
-};
+import { FORMAT_LABELS, PostFormat } from "./types";
 
 export interface EmailPostInput {
   title: string;
@@ -12,6 +8,7 @@ export interface EmailPostInput {
   time: string;
   imageUrl?: string;
   slides?: { caption: string; imageUrl?: string }[];
+  images?: string[];
 }
 
 export interface EmailAttachment {
@@ -56,6 +53,18 @@ export function buildPostEmail(post: EmailPostInput): { subject: string; html: s
     });
   }
 
+  if (post.images) {
+    post.images.forEach((url, i) => {
+      if (!url) return;
+      if (url.startsWith("data:")) {
+        const attachment = dataUrlToAttachment(url, `image-${i + 1}`);
+        if (attachment) attachments.push(attachment);
+      } else {
+        remoteImages.push({ label: `Image ${i + 1}`, url });
+      }
+    });
+  }
+
   const slidesHtml =
     post.slides && post.slides.length > 0
       ? `<ol>${post.slides.map((s) => `<li>${escapeHtml(s.caption)}</li>`).join("")}</ol>`
@@ -72,7 +81,7 @@ export function buildPostEmail(post: EmailPostInput): { subject: string; html: s
       </p>
       <h2 style="color:#394e9d; margin-top:4px;">${escapeHtml(post.title)}</h2>
       <p style="color:#76818e; font-size:13px;">
-        ${FORMAT_LABELS[post.format] ?? post.format} · Programmé le ${escapeHtml(post.date)} à ${escapeHtml(post.time)}
+        ${FORMAT_LABELS[post.format as PostFormat] ?? post.format} · Programmé le ${escapeHtml(post.date)} à ${escapeHtml(post.time)}
       </p>
       <div style="white-space: pre-wrap; line-height:1.5;">${escapeHtml(post.content)}</div>
       ${slidesHtml}

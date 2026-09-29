@@ -1,4 +1,4 @@
-export type PostFormat = "article" | "image" | "carousel";
+export type PostFormat = "article" | "image" | "carousel" | "video";
 
 export type PostStatus = "draft" | "scheduled" | "published";
 
@@ -24,6 +24,8 @@ export interface Post {
   content: string;
   imageUrl?: string;
   slides?: CarouselSlide[];
+  /** Manually attached images, for formats ("article", "video") with no dedicated image field of their own. */
+  images?: string[];
   /** Visual theme applied to imageUrl/slides, kept so a manual regeneration stays consistent. */
   graphicCategory?: GraphicCategory;
   date: string; // YYYY-MM-DD
@@ -37,10 +39,12 @@ export const FORMAT_LABELS: Record<PostFormat, string> = {
   article: "Article",
   image: "Image + texte",
   carousel: "Carrousel",
+  video: "Vidéo",
 };
 
 export const FORMAT_COLORS: Record<PostFormat, { bg: string; text: string; dot: string }> = {
   article: { bg: "bg-daimo-blue/10", text: "text-daimo-blue", dot: "bg-daimo-blue" },
   image: { bg: "bg-daimo-lightblue/10", text: "text-daimo-lightblue", dot: "bg-daimo-lightblue" },
   carousel: { bg: "bg-daimo-green/10", text: "text-daimo-green", dot: "bg-daimo-green" },
+  video: { bg: "bg-daimo-purple/10", text: "text-daimo-purple", dot: "bg-daimo-purple" },
 };

@@ -4,6 +4,7 @@ const FORMAT_ICON: Record<Post["format"], string> = {
   article: "📰",
   image: "🖼️",
   carousel: "📑",
+  video: "🎥",
 };
 
 export function PostBadge({

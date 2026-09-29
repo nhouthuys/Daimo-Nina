@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 interface RequestBody {
-  format: "article" | "image" | "carousel";
+  format: "article" | "image" | "carousel" | "video";
   theme?: string;
   guidelines?: string;
 }
@@ -30,7 +30,7 @@ JSON shape:
 
 Field notes:
 - "title": short headline, also shown on the generated graphic.
-- "content": the LinkedIn post text (the caption for image/article formats; a short intro sentence for a carousel).
+- "content": the LinkedIn post text (the caption for image/article/video formats; for "video", write it as a caption/script intro for a video the user will produce and attach separately; a short intro sentence for a carousel).
 - "slides": ONLY for the "carousel" format, 4 to 6 short slide captions, the first one restating the title. Use null for other formats.
 - "category": "tip" for a process/product tip, "client" for a client story or company news, "hiring" for recruitment.
 - "highlight": a short punchy line (max about 6 words) shown on the graphic, e.g. a benefit or call to action.`;
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { format, theme, guidelines } = body;
-  if (format !== "article" && format !== "image" && format !== "carousel") {
+  if (format !== "article" && format !== "image" && format !== "carousel" && format !== "video") {
     return NextResponse.json({ error: "Invalid format." }, { status: 400 });
   }
 

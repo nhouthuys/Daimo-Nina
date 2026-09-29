@@ -45,6 +45,8 @@ export function PostModal({
   const [themeHint, setThemeHint] = useState(initial.title);
   const [content, setContent] = useState(initial.content);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? "");
+  const [images, setImages] = useState<string[]>(initial.images ?? []);
+  const [extraImageUrlInput, setExtraImageUrlInput] = useState("");
   const [slides, setSlides] = useState<CarouselSlide[]>(
     initial.slides && initial.slides.length > 0 ? initial.slides : [newSlide(), newSlide()]
   );
@@ -60,6 +62,7 @@ export function PostModal({
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<{ id: string; message: string } | null>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
+  const extraImageInputRef = useRef<HTMLInputElement>(null);
   const isEditing = initial.title !== "" || initial.content !== "";
 
   async function handleUploadMainImage(file: File) {
@@ -75,6 +78,32 @@ export function PostModal({
     } finally {
       setUploadingId(null);
     }
+  }
+
+  async function handleUploadExtraImage(file: File) {
+    setUploadingId("extra");
+    setUploadError(null);
+    try {
+      const result = await uploadImage(file);
+      if (result.ok && result.url) {
+        setImages((prev) => [...prev, result.url as string]);
+      } else {
+        setUploadError({ id: "extra", message: result.error ?? "Échec de l'upload." });
+      }
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
+  function addExtraImageUrl() {
+    const url = extraImageUrlInput.trim();
+    if (!url) return;
+    setImages((prev) => [...prev, url]);
+    setExtraImageUrlInput("");
+  }
+
+  function removeExtraImage(index: number) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleUploadSlideImage(slideId: string, file: File) {
@@ -105,6 +134,7 @@ export function PostModal({
           content,
           imageUrl: format === "image" ? imageUrl : undefined,
           slides: format === "carousel" ? slides.filter((s) => s.caption.trim() !== "") : undefined,
+          images: format === "article" || format === "video" ? images : undefined,
           date,
           time,
         },
@@ -130,6 +160,7 @@ export function PostModal({
       content,
       imageUrl: format === "image" ? imageUrl : undefined,
       slides: format === "carousel" ? slides.filter((s) => s.caption.trim() !== "") : undefined,
+      images: format === "article" || format === "video" ? images.filter(Boolean) : undefined,
       graphicCategory: format === "image" || format === "carousel" ? graphicCategory : undefined,
       date,
       time,
@@ -201,7 +232,7 @@ export function PostModal({
           <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
             1. Format
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
               <button
                 key={f}
@@ -291,6 +322,74 @@ export function PostModal({
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
           />
         </div>
+
+        {(format === "article" || format === "video") && (
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Image(s) — optionnel
+                {format === "video" && " (la vidéo elle-même se gère hors de cet outil)"}
+              </label>
+              <button
+                onClick={() => extraImageInputRef.current?.click()}
+                disabled={uploadingId === "extra"}
+                className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+              >
+                {uploadingId === "extra" ? "⏳ Upload…" : "📤 Ajouter une image"}
+              </button>
+              <input
+                ref={extraImageInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUploadExtraImage(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            {images.length > 0 && (
+              <div className="mb-2 grid grid-cols-4 gap-2">
+                {images.map((url, i) => (
+                  <div key={i} className="relative overflow-hidden rounded-lg border border-slate-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Image ${i + 1}`} className="aspect-square w-full object-cover" />
+                    <button
+                      onClick={() => removeExtraImage(i)}
+                      aria-label="Retirer cette image"
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white hover:bg-black/80"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="url"
+                value={extraImageUrlInput}
+                onChange={(e) => setExtraImageUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addExtraImageUrl();
+                }}
+                placeholder="Ou collez un lien vers une image téléchargée depuis Artlist (ou ailleurs), puis Entrée"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+              />
+              <button
+                onClick={addExtraImageUrl}
+                disabled={!extraImageUrlInput.trim()}
+                className="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-daimo-blue hover:border-daimo-blue/40 disabled:opacity-40"
+              >
+                Ajouter
+              </button>
+            </div>
+            {uploadError?.id === "extra" && (
+              <p className="mt-1 text-xs text-daimo-pink">{uploadError.message}</p>
+            )}
+          </div>
+        )}
 
         {format === "image" && (
           <div className="space-y-3">

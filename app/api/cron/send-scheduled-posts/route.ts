@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
         time: post.time,
         imageUrl: post.imageUrl,
         slides: post.slides?.map((s) => ({ caption: s.caption, imageUrl: s.imageUrl })),
+        images: post.images,
       });
       const result = await resend.emails.send({
         from,

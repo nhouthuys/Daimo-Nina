@@ -13,7 +13,6 @@ export interface ParsedCalendarEntry {
   theme: string;
   format: PostFormat;
   formatSpecified: boolean;
-  videoNote: boolean;
   type: EntryType;
 }
 
@@ -46,13 +45,13 @@ function parseDateCell(cell: unknown): string | null {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
-function mapFormat(cell: unknown): { format: PostFormat; formatSpecified: boolean; videoNote: boolean } {
+function mapFormat(cell: unknown): { format: PostFormat; formatSpecified: boolean } {
   const text = normalize(cellToText(cell));
-  if (!text) return { format: "article", formatSpecified: false, videoNote: false };
-  if (text.includes("carrousel") || text.includes("carousel")) return { format: "carousel", formatSpecified: true, videoNote: false };
-  if (text.includes("video")) return { format: "article", formatSpecified: true, videoNote: true };
-  if (text.includes("photo")) return { format: "image", formatSpecified: true, videoNote: false };
-  return { format: "article", formatSpecified: true, videoNote: false };
+  if (!text) return { format: "article", formatSpecified: false };
+  if (text.includes("carrousel") || text.includes("carousel")) return { format: "carousel", formatSpecified: true };
+  if (text.includes("video") || text.includes("vidéo")) return { format: "video", formatSpecified: true };
+  if (text.includes("photo")) return { format: "image", formatSpecified: true };
+  return { format: "article", formatSpecified: true };
 }
 
 /**
@@ -114,19 +113,13 @@ export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry
     if (!theme) continue;
     const date = parseDateCell(row[dateCol]);
     if (!date) continue;
-    const { format, formatSpecified, videoNote } =
-      formatCol !== -1 ? mapFormat(row[formatCol]) : { format: "article" as PostFormat, formatSpecified: false, videoNote: false };
+    const { format, formatSpecified } =
+      formatCol !== -1 ? mapFormat(row[formatCol]) : { format: "article" as PostFormat, formatSpecified: false };
     const type = typeCol !== -1 ? mapType(row[typeCol]) : "theme";
-    entries.push({ date, theme, format, formatSpecified, videoNote, type });
+    entries.push({ date, theme, format, formatSpecified, type });
   }
 
   return entries;
-}
-
-function withVideoNote(content: string, videoNote: boolean): string {
-  return videoNote
-    ? `${content}\n\nFormat planned in the calendar: video. This tool doesn't generate video, to be produced and published separately.`
-    : content;
 }
 
 /**
@@ -174,7 +167,7 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guid
       id: crypto.randomUUID(),
       format,
       title,
-      content: withVideoNote(content, entry.videoNote),
+      content,
       graphicCategory: category,
       date: entry.date,
       time: "09:00",

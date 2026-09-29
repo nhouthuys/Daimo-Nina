@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { FORMAT_LABELS, PostFormat } from "@/lib/types";
+import { Modal } from "./Modal";
 
 interface ActionBarProps {
   onGuidelines: () => void;
@@ -50,62 +51,85 @@ export function ActionBar({
 }: ActionBarProps) {
   const [theme, setTheme] = useState("");
   const [format, setFormat] = useState<PostFormat>("article");
+  const [menuOpen, setMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  function triggerGenerate() {
+    onGenerate(theme, format);
+    setMenuOpen(false);
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <PillButton onClick={onGuidelines}>🧭 Consignes d&apos;écriture</PillButton>
-        <PillButton onClick={onCharter}>🎨 Charte graphique</PillButton>
-        <PillButton onClick={() => fileInputRef.current?.click()} disabled={importing}>
-          {importing ? "⏳ Import…" : "📥 Importer un calendrier"}
-        </PillButton>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onImportFile(file);
-            e.target.value = "";
-          }}
-        />
-        <PillButton onClick={onNewPost} primary>
-          + Nouveau post
-        </PillButton>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-400">1. Format</span>
-        {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFormat(f)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
-              format === f
-                ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
-                : "border-slate-200 text-slate-600 hover:border-daimo-blue/30"
-            }`}
-          >
-            {FORMAT_LABELS[f]}
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-400">2. Contenu</span>
-        <input
-          value={theme}
-          onChange={(e) => setTheme(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !generating) onGenerate(theme, format);
-          }}
-          placeholder="Thème (ex : notre partenariat avec…) ou collez directement un texte déjà rédigé — les deux fonctionnent"
-          className="min-w-[240px] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
-        />
-        <PillButton onClick={() => onGenerate(theme, format)} disabled={generating}>
-          {generating ? "⏳ Génération…" : "3. ✨ Générer"}
-        </PillButton>
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <PillButton onClick={onGuidelines}>🧭 Consignes d&apos;écriture</PillButton>
+      <PillButton onClick={onCharter}>🎨 Charte graphique</PillButton>
+      <PillButton onClick={() => fileInputRef.current?.click()} disabled={importing}>
+        {importing ? "⏳ Import…" : "📥 Importer un calendrier"}
+      </PillButton>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onImportFile(file);
+          e.target.value = "";
+        }}
+      />
+      <PillButton onClick={() => setMenuOpen(true)} disabled={generating}>
+        {generating ? "⏳ Génération…" : "✨ Générer un post"}
+      </PillButton>
+      <PillButton onClick={onNewPost} primary>
+        + Nouveau post
+      </PillButton>
+
+      {menuOpen && (
+        <Modal title="Générer un post" onClose={() => setMenuOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                1. Format
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFormat(f)}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                      format === f
+                        ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
+                        : "border-slate-200 text-slate-600 hover:border-daimo-blue/30"
+                    }`}
+                  >
+                    {FORMAT_LABELS[f]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                2. Contenu
+              </span>
+              <input
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !generating) triggerGenerate();
+                }}
+                autoFocus
+                placeholder="Thème (ex : notre partenariat avec…) ou collez directement un texte déjà rédigé — les deux fonctionnent"
+                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+              />
+            </div>
+            <div className="flex justify-end">
+              <PillButton onClick={triggerGenerate} primary disabled={generating}>
+                {generating ? "⏳ Génération…" : "3. ✨ Générer"}
+              </PillButton>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
