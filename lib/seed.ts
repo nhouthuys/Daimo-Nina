@@ -83,7 +83,6 @@ export async function buildCalendarSeedPosts(): Promise<Post[]> {
       title: entry.title,
       content: entry.note ? `${entry.content}\n\n${entry.note}` : entry.content,
       graphicCategory: entry.category,
-      visualStyle: "template",
       date: entry.date,
       time: "09:00",
       status: "draft",
@@ -96,7 +95,6 @@ export async function buildCalendarSeedPosts(): Promise<Post[]> {
         category: entry.category,
         headline: entry.title,
         highlight,
-        visual: "template",
       });
     }
 
@@ -111,7 +109,6 @@ export async function buildCalendarSeedPosts(): Promise<Post[]> {
             headline: caption,
             slideIndex: i + 1,
             slideCount,
-            visual: "template",
           }),
         }))
       );

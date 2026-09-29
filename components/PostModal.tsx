@@ -9,8 +9,6 @@ import {
   Post,
   PostFormat,
   PostStatus,
-  VISUAL_STYLE_LABELS,
-  VisualStyle,
 } from "@/lib/types";
 import { generatePostGraphic } from "@/lib/graphic";
 import { sendPostEmail } from "@/lib/sendPostEmail";
@@ -51,10 +49,8 @@ export function PostModal({
     initial.slides && initial.slides.length > 0 ? initial.slides : [newSlide(), newSlide()]
   );
   const [graphicCategory, setGraphicCategory] = useState<GraphicCategory>(initial.graphicCategory ?? "tip");
-  const [visualStyle, setVisualStyle] = useState<VisualStyle>(initial.visualStyle ?? "template");
-  const [candidates, setCandidates] = useState<{ style: VisualStyle; url: string }[]>([]);
-  const [proposing, setProposing] = useState(false);
-  const [visualError, setVisualError] = useState<string | null>(null);
+  const [regeneratingImage, setRegeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [slideImageError, setSlideImageError] = useState<{ id: string; message: string } | null>(null);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
@@ -135,7 +131,6 @@ export function PostModal({
       imageUrl: format === "image" ? imageUrl : undefined,
       slides: format === "carousel" ? slides.filter((s) => s.caption.trim() !== "") : undefined,
       graphicCategory: format === "image" || format === "carousel" ? graphicCategory : undefined,
-      visualStyle: format === "image" || format === "carousel" ? visualStyle : undefined,
       date,
       time,
       status,
@@ -155,7 +150,6 @@ export function PostModal({
         headline: caption || "Your text here",
         slideIndex: slides.findIndex((s) => s.id === id) + 1,
         slideCount: slides.length,
-        visual: visualStyle,
       });
       setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, imageUrl: url } : s)));
     } catch (err) {
@@ -163,41 +157,21 @@ export function PostModal({
     }
   }
 
-  async function proposeVisuals() {
-    setProposing(true);
-    setVisualError(null);
+  async function regenerateMainImage() {
+    setRegeneratingImage(true);
+    setImageError(null);
     try {
-      const base = { category: graphicCategory, headline: title || "Your title here", highlight: DEFAULT_HIGHLIGHT[graphicCategory] };
-      const labels: VisualStyle[] = ["template", "photo", "photo"];
-      const results = await Promise.allSettled([
-        generatePostGraphic({ ...base, visual: "template" }),
-        generatePostGraphic({ ...base, visual: "photo" }),
-        generatePostGraphic({ ...base, visual: "photo" }),
-      ]);
-      const options: { style: VisualStyle; url: string }[] = [];
-      const errors: string[] = [];
-      results.forEach((r, i) => {
-        if (r.status === "fulfilled") {
-          options.push({ style: labels[i], url: r.value });
-        } else {
-          const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
-          if (!errors.includes(message)) errors.push(message);
-        }
+      const url = await generatePostGraphic({
+        category: graphicCategory,
+        headline: title || "Your title here",
+        highlight: DEFAULT_HIGHLIGHT[graphicCategory],
       });
-      setCandidates(options);
-      if (options.length > 0) {
-        setImageUrl(options[0].url);
-        setVisualStyle(options[0].style);
-      }
-      if (errors.length > 0) setVisualError(errors.join(" "));
+      setImageUrl(url);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Échec de la génération de l'image.");
     } finally {
-      setProposing(false);
+      setRegeneratingImage(false);
     }
-  }
-
-  function pickCandidate(candidate: { style: VisualStyle; url: string }) {
-    setImageUrl(candidate.url);
-    setVisualStyle(candidate.style);
   }
 
   function categorySelector() {
@@ -214,26 +188,6 @@ export function PostModal({
             }`}
           >
             {GRAPHIC_CATEGORY_LABELS[c]}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  function visualStyleSelector() {
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {(Object.keys(VISUAL_STYLE_LABELS) as VisualStyle[]).map((v) => (
-          <button
-            key={v}
-            onClick={() => setVisualStyle(v)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
-              visualStyle === v
-                ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
-                : "border-slate-200 text-slate-500 hover:border-daimo-blue/30"
-            }`}
-          >
-            {VISUAL_STYLE_LABELS[v]}
           </button>
         ))}
       </div>
@@ -352,11 +306,11 @@ export function PostModal({
                   Image (le titre y est affiché automatiquement)
                 </label>
                 <button
-                  onClick={proposeVisuals}
-                  disabled={proposing}
+                  onClick={regenerateMainImage}
+                  disabled={regeneratingImage}
                   className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
                 >
-                  {proposing ? "⏳ Génération…" : "🎲 Proposer des visuels"}
+                  {regeneratingImage ? "⏳ Génération…" : "🎨 Générer l'image"}
                 </button>
               </div>
               {imageUrl ? (
@@ -368,39 +322,20 @@ export function PostModal({
                 />
               ) : (
                 <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
-                  Aucune image, cliquez sur « Proposer des visuels »
+                  Aucune image, cliquez sur « Générer l&apos;image »
                 </div>
               )}
-              {candidates.length > 0 && (
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {candidates.map((c, i) => (
-                    <button
-                      key={i}
-                      onClick={() => pickCandidate(c)}
-                      className={`relative overflow-hidden rounded-lg border-2 ${
-                        imageUrl === c.url ? "border-daimo-blue" : "border-transparent hover:border-slate-300"
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.url} alt={c.style === "template" ? "Type PowerPoint" : "Photo"} className="aspect-[1200/630] w-full object-cover" />
-                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        {c.style === "template" ? "PowerPoint" : "Photo"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {visualError && <p className="mt-1 text-xs text-daimo-pink">{visualError}</p>}
+              {imageError && <p className="mt-1 text-xs text-daimo-pink">{imageError}</p>}
               <p className="mt-1 text-xs text-slate-400">
-                Un visuel de type PowerPoint et deux photos de personnes en contexte sont proposés à chaque
-                clic : cliquez sur l&apos;une des vignettes pour la choisir. Tout est généré côté
-                navigateur, avec le titre affiché directement sur l&apos;image.
+                Génère le visuel de marque Daïmo (template) avec le titre affiché dessus, entièrement
+                côté navigateur. Pour une vraie photo, téléchargez-la depuis Artlist puis utilisez le
+                champ ci-dessous.
               </p>
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Ou utilisez une photo déjà existante
+                  Ou utilisez une photo Artlist (ou autre) déjà téléchargée
                 </label>
                 <button
                   onClick={() => mainImageInputRef.current?.click()}
@@ -431,8 +366,8 @@ export function PostModal({
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
               />
               <p className="mt-1 text-xs text-slate-400">
-                Collez le lien d&apos;une photo que vous avez déjà (Drive, site, banque d&apos;images…),
-                ou uploadez directement un fichier depuis votre ordinateur : elle remplacera l&apos;image
+                Collez le lien d&apos;une photo déjà en ligne, ou uploadez directement un fichier
+                téléchargé depuis Artlist (ou une autre source) : elle remplacera l&apos;image
                 ci-dessus telle quelle, sans texte ajouté par-dessus.
               </p>
               {uploadError?.id === "main" && (
@@ -449,12 +384,6 @@ export function PostModal({
                 Thème
               </label>
               {categorySelector()}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Fond (des slides générées, pas de celles avec un lien photo)
-              </label>
-              {visualStyleSelector()}
             </div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
               Slides du carrousel : le texte de chaque slide s&apos;affiche sur son image

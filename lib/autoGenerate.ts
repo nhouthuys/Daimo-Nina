@@ -1,12 +1,8 @@
 import { pickWeightedFormat, GeneratedContent } from "./generate";
 import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
-import { Post, PostFormat, VisualStyle } from "./types";
+import { Post, PostFormat } from "./types";
 import { deriveTitleFromText, guessCategory, isFinishedText, splitTextIntoSlides } from "./textInput";
-
-function pickVisualStyle(): VisualStyle {
-  return Math.random() < 0.6 ? "template" : "photo";
-}
 
 /** A theme field can hold a finished post instead of a topic — use it as-is, no AI rewrite, same as the Excel "Texte" type. */
 function contentFromFinishedText(text: string, format: PostFormat): GeneratedContent {
@@ -47,7 +43,6 @@ export async function createGeneratedPost(
     customTheme && isFinishedText(customTheme)
       ? contentFromFinishedText(customTheme, format)
       : await generateContentSmart(format, customTheme, guidelines);
-  const visualStyle = pickVisualStyle();
   const now = new Date().toISOString();
 
   const post: Post = {
@@ -57,7 +52,6 @@ export async function createGeneratedPost(
     content: generated.content,
     slides: generated.slides,
     graphicCategory: generated.category,
-    visualStyle,
     date,
     time,
     status: "draft",
@@ -70,7 +64,6 @@ export async function createGeneratedPost(
       category: generated.category,
       headline: generated.title,
       highlight: generated.highlight,
-      visual: visualStyle,
     });
   }
 
@@ -84,7 +77,6 @@ export async function createGeneratedPost(
           headline: slide.caption,
           slideIndex: i + 1,
           slideCount,
-          visual: visualStyle,
         }),
       }))
     );

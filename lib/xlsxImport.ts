@@ -176,7 +176,6 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guid
       title,
       content: withVideoNote(content, entry.videoNote),
       graphicCategory: category,
-      visualStyle: "template",
       date: entry.date,
       time: "09:00",
       status: "draft",
@@ -185,7 +184,7 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guid
     };
 
     if (format === "image") {
-      post.imageUrl = await generatePostGraphic({ category, headline: title, highlight, visual: "template" });
+      post.imageUrl = await generatePostGraphic({ category, headline: title, highlight });
     }
 
     if (format === "carousel" && slideCaptions && slideCaptions.length > 0) {
@@ -195,7 +194,7 @@ export async function buildPostsFromEntries(entries: ParsedCalendarEntry[], guid
           async (caption, i): Promise<CarouselSlide> => ({
             id: crypto.randomUUID(),
             caption,
-            imageUrl: await generatePostGraphic({ category, headline: caption, slideIndex: i + 1, slideCount, visual: "template" }),
+            imageUrl: await generatePostGraphic({ category, headline: caption, slideIndex: i + 1, slideCount }),
           })
         )
       );

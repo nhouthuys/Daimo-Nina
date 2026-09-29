@@ -1,5 +1,4 @@
-import { GraphicCategory, VisualStyle } from "./types";
-import { fetchStockPhotos } from "./fetchStockPhotos";
+import { GraphicCategory } from "./types";
 
 const FONT_STACK = "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
@@ -7,8 +6,6 @@ interface Theme {
   gradient: [string, string];
   badgeLabel: string;
   accent: string;
-  /** Keywords used to fetch a matching real photo for the "photo" visual style. */
-  photoKeywords: string;
 }
 
 const THEMES: Record<GraphicCategory, Theme> = {
@@ -16,19 +13,16 @@ const THEMES: Record<GraphicCategory, Theme> = {
     gradient: ["#394e9d", "#3fb5cc"],
     badgeLabel: "PROCESS TIP",
     accent: "#3fb5cc",
-    photoKeywords: "office,team,business,computer",
   },
   client: {
     gradient: ["#394e9d", "#65b22e"],
     badgeLabel: "CLIENT STORY",
     accent: "#65b22e",
-    photoKeywords: "meeting,handshake,business,office",
   },
   hiring: {
     gradient: ["#662d91", "#ec008c"],
     badgeLabel: "WE'RE HIRING",
     accent: "#ec008c",
-    photoKeywords: "team,office,people,coworkers",
   },
 };
 
@@ -51,40 +45,6 @@ function loadImage(src: string, crossOrigin?: "anonymous"): Promise<HTMLImageEle
     imageCache.set(src, cached);
   }
   return cached;
-}
-
-/**
- * Looks up a real, royalty-free stock photo matching the category via the
- * Pexels-backed /api/stock-photos route. Throws a descriptive error when
- * PEXELS_API_KEY isn't configured on the server or the search fails — there
- * is no keyless fallback.
- */
-async function fetchCategoryPhotoUrl(category: GraphicCategory, width: number, height: number): Promise<string> {
-  const keywords = THEMES[category].photoKeywords.split(",");
-  const orientation = width === height ? "square" : width > height ? "landscape" : "portrait";
-  const result = await fetchStockPhotos(keywords, 6, width, height, orientation, "photo");
-  if (!result.ok || !result.photos || result.photos.length === 0) {
-    throw new Error(result.error ?? "Aucune photo trouvée pour cette catégorie.");
-  }
-  return result.photos[Math.floor(Math.random() * result.photos.length)].url;
-}
-
-/** Draws `img` covering the full `w`×`h` box, cropping overflow like CSS `object-fit: cover`. */
-function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number) {
-  const imgRatio = img.width / img.height;
-  const boxRatio = w / h;
-  let sx = 0;
-  let sy = 0;
-  let sw = img.width;
-  let sh = img.height;
-  if (imgRatio > boxRatio) {
-    sw = img.height * boxRatio;
-    sx = (img.width - sw) / 2;
-  } else {
-    sh = img.width / boxRatio;
-    sy = (img.height - sh) / 2;
-  }
-  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -147,22 +107,20 @@ export interface GraphicOptions {
   /** When set, renders the square "carousel slide" layout with a "n / total" progress badge instead of the category badge. */
   slideIndex?: number;
   slideCount?: number;
-  /** "template" (default): illustrated brand gradient. "photo": a real stock photo with people as the background. */
-  visual?: VisualStyle;
 }
 
 /**
  * Renders a full, ready-to-post LinkedIn graphic entirely client-side via <canvas>:
- * either the on-brand gradient template, or a real photo background, plus the real
- * Daïmo mark/lockup images, a category badge, the real headline text and an optional
- * highlight pill. Returns a JPEG data URL.
+ * the on-brand gradient template, plus the real Daïmo mark/lockup images, a category
+ * badge, the real headline text and an optional highlight pill. Returns a JPEG data
+ * URL. For a real photo instead of the template, download it from Artlist and use the
+ * "upload" / "paste a link" field next to the generated image.
  */
 export async function generatePostGraphic(opts: GraphicOptions): Promise<string> {
   const isSlide = opts.slideIndex != null && opts.slideCount != null;
   const width = opts.width ?? (isSlide ? 1080 : 1200);
   const height = opts.height ?? (isSlide ? 1080 : 630);
   const theme = THEMES[opts.category];
-  const visual = opts.visual ?? "template";
 
   const [markImg, lockupImg] = await Promise.all([loadImage(MARK_WHITE_SRC), loadImage(LOCKUP_WHITE_SRC)]);
 
@@ -172,41 +130,26 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
 
-  if (visual === "photo") {
-    const photoUrl = await fetchCategoryPhotoUrl(opts.category, width, height);
-    let photoImg: HTMLImageElement;
-    try {
-      photoImg = await loadImage(photoUrl, "anonymous");
-    } catch {
-      throw new Error("La photo trouvée n'a pas pu être chargée (service indisponible ou bloqué).");
-    }
-    // 1. Real photo, cropped to fill the canvas.
-    drawImageCover(ctx, photoImg, width, height);
-    // 2. Stronger dark scrim — photos need more contrast than a flat gradient for the text to read.
-    ctx.fillStyle = "rgba(6, 10, 24, 0.5)";
-    ctx.fillRect(0, 0, width, height);
-  } else {
-    // 1. Brand gradient background.
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, theme.gradient[0]);
-    gradient.addColorStop(1, theme.gradient[1]);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+  // 1. Brand gradient background.
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, theme.gradient[0]);
+  gradient.addColorStop(1, theme.gradient[1]);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
 
-    // 2. The real Daïmo mark, large and restrained, bleeding off the top-right corner.
-    const bleedH = height * 1.55;
-    const bleedW = bleedH * (markImg.width / markImg.height);
-    ctx.save();
-    ctx.globalAlpha = 0.12;
-    ctx.translate(width * 0.86, height * -0.02);
-    ctx.rotate(-0.2);
-    ctx.drawImage(markImg, -bleedW / 2, -bleedH / 2, bleedW, bleedH);
-    ctx.restore();
+  // 2. The real Daïmo mark, large and restrained, bleeding off the top-right corner.
+  const bleedH = height * 1.55;
+  const bleedW = bleedH * (markImg.width / markImg.height);
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.translate(width * 0.86, height * -0.02);
+  ctx.rotate(-0.2);
+  ctx.drawImage(markImg, -bleedW / 2, -bleedH / 2, bleedW, bleedH);
+  ctx.restore();
 
-    // 3. Dark scrim so white text stays legible on any part of the gradient.
-    ctx.fillStyle = "rgba(8, 12, 28, 0.32)";
-    ctx.fillRect(0, 0, width, height);
-  }
+  // 3. Dark scrim so white text stays legible on any part of the gradient.
+  ctx.fillStyle = "rgba(8, 12, 28, 0.32)";
+  ctx.fillRect(0, 0, width, height);
 
   const padding = Math.round(width * 0.065);
   ctx.textBaseline = "top";
@@ -288,10 +231,6 @@ export async function generatePostGraphic(opts: GraphicOptions): Promise<string>
   try {
     return canvas.toDataURL("image/jpeg", 0.9);
   } catch {
-    throw new Error(
-      visual === "photo"
-        ? "Impossible de générer l'image : la photo n'autorise pas cet usage (CORS)."
-        : "Impossible de générer l'image."
-    );
+    throw new Error("Impossible de générer l'image.");
   }
 }
