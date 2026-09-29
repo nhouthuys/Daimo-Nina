@@ -80,7 +80,7 @@ export function ActionBar({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !generating) onGenerate(theme);
           }}
-          placeholder="Proposez un thème (optionnel), ex : notre nouveau partenariat avec…"
+          placeholder="Thème (ex : notre partenariat avec…) ou collez directement un texte déjà rédigé — les deux fonctionnent"
           className="min-w-[240px] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
         />
         <PillButton onClick={() => onGenerate(theme)} disabled={generating}>

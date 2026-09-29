@@ -3,6 +3,7 @@ import { CarouselSlide, GraphicCategory, Post, PostFormat } from "./types";
 import { pickWeightedFormat } from "./generate";
 import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
+import { deriveTitleFromText, guessCategory, splitTextIntoSlides } from "./textInput";
 
 /** How the "Thème/contenu" cell should be turned into the post's actual copy. */
 export type EntryType = "text" | "theme" | "ai";
@@ -67,30 +68,6 @@ function mapType(cell: unknown): EntryType {
   return "theme";
 }
 
-function guessCategory(text: string): GraphicCategory {
-  const normalized = normalize(text);
-  if (/(hiring|recrut|job|poste|career|carriere)/.test(normalized)) return "hiring";
-  return "client";
-}
-
-/** Turns the first line/sentence of a finished text into a short image headline. */
-function deriveTitleFromText(text: string): string {
-  const firstLine = text.split(/\n+/)[0].trim();
-  const sentenceMatch = firstLine.match(/^(.{10,100}?[.!?])(\s|$)/);
-  const candidate = (sentenceMatch ? sentenceMatch[1] : firstLine).replace(/[.!?]+$/, "").trim();
-  if (candidate.length <= 90) return candidate || "Update";
-  return `${candidate.slice(0, 87).trim()}…`;
-}
-
-/** Splits a finished text into carousel slides: by paragraph, or by sentence if there's only one. */
-function splitTextIntoSlides(text: string, max = 6): string[] {
-  const paragraphs = text
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const chunks = paragraphs.length > 1 ? paragraphs : text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
-  return (chunks.length > 0 ? chunks : [text.trim()]).slice(0, max);
-}
 
 /**
  * Reads a calendar spreadsheet entirely client-side (the file never leaves the

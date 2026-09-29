@@ -227,27 +227,30 @@ export function PostModal({
     <Modal title={isEditing ? "Modifier le post" : "Nouveau post"} onClose={onClose} wide>
       <div className="space-y-5">
         {onRegenerate && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-daimo-blue/20 bg-daimo-blue/5 p-2">
-            <span className="shrink-0 text-xs font-medium text-daimo-blue">🔁 Régénérer ce post</span>
-            <input
+          <div className="space-y-2 rounded-lg border border-daimo-blue/20 bg-daimo-blue/5 p-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-daimo-blue">🔁 Régénérer ce post</span>
+              <button
+                onClick={() => onRegenerate()}
+                title="Génère un post sur un thème et un format aléatoires, sans tenir compte du champ ni du format ci-dessus"
+                className="shrink-0 text-xs font-medium text-daimo-blue hover:underline"
+              >
+                🎲 Aléatoire
+              </button>
+            </div>
+            <textarea
               value={themeHint}
               onChange={(e) => setThemeHint(e.target.value)}
-              placeholder="Thème ou contexte précis à transmettre (ex : Daïmo fête ses 5 ans, remercier l'équipe et les clients…)"
-              className="min-w-[220px] flex-1 rounded-full border border-daimo-blue/30 bg-white px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+              rows={2}
+              placeholder="Un thème court (ex : Daïmo fête ses 5 ans…) — ou collez un texte déjà rédigé, il sera utilisé tel quel, sans réécriture"
+              className="w-full rounded-lg border border-daimo-blue/30 bg-white px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
             />
             <button
               onClick={() => onRegenerate(themeHint.trim() || undefined, format)}
-              title={`Génère un ${FORMAT_LABELS[format].toLowerCase()} sur ce thème (le format sélectionné ci-dessous est conservé)`}
-              className="shrink-0 rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90"
+              title={`Génère un ${FORMAT_LABELS[format].toLowerCase()} à partir de ce texte (le format sélectionné ci-dessous est conservé)`}
+              className="rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90"
             >
               Générer ({FORMAT_LABELS[format].toLowerCase()})
-            </button>
-            <button
-              onClick={() => onRegenerate()}
-              title="Génère un post sur un thème et un format aléatoires, sans tenir compte du champ ni du format ci-dessus"
-              className="shrink-0 text-xs font-medium text-daimo-blue hover:underline"
-            >
-              🎲 Aléatoire
             </button>
           </div>
         )}

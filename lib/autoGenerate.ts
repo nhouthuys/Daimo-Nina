@@ -1,10 +1,27 @@
-import { pickWeightedFormat } from "./generate";
+import { pickWeightedFormat, GeneratedContent } from "./generate";
 import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
 import { Post, PostFormat, VisualStyle } from "./types";
+import { deriveTitleFromText, guessCategory, isFinishedText, splitTextIntoSlides } from "./textInput";
 
 function pickVisualStyle(): VisualStyle {
   return Math.random() < 0.6 ? "template" : "photo";
+}
+
+/** A theme field can hold a finished post instead of a topic — use it as-is, no AI rewrite, same as the Excel "Texte" type. */
+function contentFromFinishedText(text: string, format: PostFormat): GeneratedContent {
+  const category = guessCategory(text);
+  return {
+    title: deriveTitleFromText(text),
+    content: text,
+    slides:
+      format === "carousel"
+        ? splitTextIntoSlides(text).map((caption) => ({ id: crypto.randomUUID(), caption }))
+        : undefined,
+    hashtag: "",
+    category,
+    highlight: "Contact the Daïmo team →",
+  };
 }
 
 /**
@@ -26,7 +43,10 @@ export async function createGeneratedPost(
   forcedFormat?: PostFormat
 ): Promise<Post> {
   const format = forcedFormat ?? pickWeightedFormat();
-  const generated = await generateContentSmart(format, customTheme, guidelines);
+  const generated =
+    customTheme && isFinishedText(customTheme)
+      ? contentFromFinishedText(customTheme, format)
+      : await generateContentSmart(format, customTheme, guidelines);
   const visualStyle = pickVisualStyle();
   const now = new Date().toISOString();
 
