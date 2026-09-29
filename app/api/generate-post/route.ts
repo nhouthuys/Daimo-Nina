@@ -9,14 +9,16 @@ interface RequestBody {
   guidelines?: string;
 }
 
-const SYSTEM_PROMPT = `You write LinkedIn posts for Daïmo, a Belgian process/IT consulting company (tagline: "Allied to process IT") that helps organizations digitize and automate their business processes.
+const BASE_SYSTEM_PROMPT = `You write LinkedIn posts for Daïmo, a Belgian process/IT consulting company (tagline: "Allied to process IT") that helps organizations digitize and automate their business processes.
 
-Rules:
+Brand voice:
+- Professional but approachable and genuine. No corporate fluff, no empty superlatives, no buzzword soup.
+- Confident and concrete: back claims with what was actually done, not with adjectives.
+- Never invent specific facts, client names, or statistics you were not given. If you don't have real specifics for the topic, keep the copy general rather than making numbers up.
+
+Writing rules:
 - Write in English.
 - Never use a dash or hyphen as punctuation (no "-", no em dash, no en dash). Use a comma, colon, or period instead. (Hyphens inside real compound words are fine, e.g. "end-to-end".)
-- Keep a professional but approachable, genuine tone. No corporate fluff, no empty superlatives.
-- Do not invent specific facts, client names, or statistics you were not given. If you don't have real specifics for the topic, keep the copy general rather than making numbers up.
-- Write a complete, ready-to-publish post, not a one-line rewrite of the topic or instructions you were given. For "article" and the carousel's intro sentence, aim for 3 to 5 short paragraphs: a hook, some context or substance, and a closing call to action.
 - Output ONLY a single JSON object, no markdown code fences, no commentary before or after it.
 
 JSON shape:
@@ -29,11 +31,34 @@ JSON shape:
 }
 
 Field notes:
-- "title": short headline, also shown on the generated graphic.
-- "content": the LinkedIn post text (the caption for image/article/video formats; for "video", write it as a caption/script intro for a video the user will produce and attach separately; a short intro sentence for a carousel).
-- "slides": ONLY for the "carousel" format, 4 to 6 short slide captions, the first one restating the title. Use null for other formats.
-- "category": "tip" for a process/product tip, "client" for a client story or company news, "hiring" for recruitment.
+- "category": which of Daïmo's three graphic templates this post uses, which also fixes its color theme: "tip" (blue/light blue) for a process or product tip, "client" (blue/green) for a client story or company news, "hiring" (purple/pink) for recruitment. Pick whichever best matches the post's substance.
 - "highlight": a short punchy line (max about 6 words) shown on the graphic, e.g. a benefit or call to action.`;
+
+/**
+ * Per-format guidance, appended to the base system prompt. Each format renders
+ * its text very differently downstream (a headline burned onto a template
+ * image vs. a plain LinkedIn caption vs. one line per carousel slide), so the
+ * length and structure constraints below are real limits from lib/graphic.ts's
+ * canvas rendering, not stylistic suggestions.
+ */
+const FORMAT_GUIDANCE: Record<"article" | "image" | "carousel" | "video", string> = {
+  article: `Format: article. This post is text only, no image accompanies it.
+- "title": a headline shown above the text (not drawn on any graphic), up to about 12 words.
+- "content": 3 to 5 short paragraphs: a hook, real context or substance, a closing call to action.
+- "slides": null.`,
+  image: `Format: image. This post pairs a short caption with one generated graphic.
+- "title": drawn directly on the graphic as large text that wraps to at most 4 lines. Keep it to ONE short punchy phrase, ideally under 8 words: it must read at a glance on a template banner, not as a full sentence.
+- "content": the caption shown below the image on LinkedIn, separate from the title. 1 to 3 sentences.
+- "slides": null.`,
+  carousel: `Format: carousel. "slides" holds 4 to 6 captions, each drawn as the ONLY text on its own square slide image (max 5 wrapped lines, so keep every slide under about 15 words).
+- "title": restates the first slide's message, shown above the carousel.
+- "slides": the first slide restates the title; the rest build the argument slide by slide, one short idea each.
+- "content": a short intro sentence, shown as the post's own caption on LinkedIn, separate from the slides.`,
+  video: `Format: video. This post accompanies a video the user will film and attach separately; you do not generate or describe the video itself.
+- "content": the caption that runs under the video. LinkedIn shows only its first ~2 lines before "see more", so open with a real hook, then a short script style intro of what the video covers.
+- "title": a short internal label for the calendar, not shown publicly.
+- "slides": null.`,
+};
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -54,7 +79,6 @@ export async function POST(req: NextRequest) {
   }
 
   const userLines = [
-    `Format: ${format}`,
     theme
       ? `Topic: ${theme}`
       : "Topic: pick an interesting, plausible topic yourself about Daïmo's business (process automation, IT consulting, digitalization, client work, hiring, or company culture).",
@@ -63,13 +87,14 @@ export async function POST(req: NextRequest) {
   ].filter(Boolean);
 
   const client = new Anthropic({ apiKey });
+  const system = `${BASE_SYSTEM_PROMPT}\n\n${FORMAT_GUIDANCE[format]}`;
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-5",
+      model: "claude-opus-5-5",
       max_tokens: 4096,
       output_config: { effort: "medium" },
-      system: SYSTEM_PROMPT,
+      system,
       messages: [{ role: "user", content: userLines.join("\n") }],
     });
 
