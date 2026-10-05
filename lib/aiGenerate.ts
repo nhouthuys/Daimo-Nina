@@ -29,19 +29,37 @@ function toGeneratedContent(ai: { title: string; content: string } & AiResponse,
   };
 }
 
-async function callAi(
-  format: PostFormat,
-  theme?: string,
-  brandPrompt?: string,
-  formatGuidance?: string,
-  referenceImageUrl?: string
-): Promise<GeneratedContent> {
+export interface GenerateContentOptions {
+  /** Topic or free-text guidance for whatever the AI ends up writing itself. */
+  theme?: string;
+  /** User-editable override for block 1 (brand identity & writing rules). */
+  brandPrompt?: string;
+  /** User-editable override for block 2 (this format's guidance). */
+  formatGuidance?: string;
+  /** A photo to ground the post in (vision input). */
+  referenceImageUrl?: string;
+  /** A title already typed by the human: kept verbatim, not regenerated. */
+  existingTitle?: string;
+  /** Content already typed by the human: kept verbatim, not regenerated. */
+  existingContent?: string;
+}
+
+async function callAi(format: PostFormat, options: GenerateContentOptions): Promise<GeneratedContent> {
+  const { theme, brandPrompt, formatGuidance, referenceImageUrl, existingTitle, existingContent } = options;
   let res: Response;
   try {
     res = await fetch("/api/generate-post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ format, theme, brandPrompt, formatGuidance, imageUrl: referenceImageUrl }),
+      body: JSON.stringify({
+        format,
+        theme,
+        brandPrompt,
+        formatGuidance,
+        imageUrl: referenceImageUrl,
+        existingTitle,
+        existingContent,
+      }),
     });
   } catch {
     throw new Error("Impossible de contacter le serveur de génération (problème réseau).");
@@ -61,17 +79,14 @@ async function callAi(
  * ANTHROPIC_API_KEY isn't configured on the server, or the call fails, this
  * throws a descriptive error instead of silently degrading.
  *
- * `brandPrompt`/`formatGuidance` are the user-editable overrides for the two
- * prompt blocks (brand identity, and this format's guidance); omit to use
- * the server's defaults. `referenceImageUrl`, when given, is sent to Claude
- * as a vision input so it can ground the post in that photo.
+ * `existingTitle`/`existingContent`, when set, are kept verbatim in the
+ * result instead of being written by the AI — only the fields the human left
+ * blank are actually generated. `referenceImageUrl`, when given, is sent to
+ * Claude as a vision input so it can ground the post in that photo.
  */
 export async function generateContentSmart(
   format: PostFormat,
-  theme?: string,
-  brandPrompt?: string,
-  formatGuidance?: string,
-  referenceImageUrl?: string
+  options: GenerateContentOptions = {}
 ): Promise<GeneratedContent> {
-  return callAi(format, theme, brandPrompt, formatGuidance, referenceImageUrl);
+  return callAi(format, options);
 }

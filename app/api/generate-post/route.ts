@@ -13,6 +13,10 @@ interface RequestBody {
   formatGuidance?: string;
   /** A photo the user already has (public URL, e.g. from Blob upload). Sent to Claude as a vision input so the post is grounded in it. */
   imageUrl?: string;
+  /** A title the human already typed into the form. When set, it is kept verbatim in the response instead of being generated. */
+  existingTitle?: string;
+  /** Content the human already typed into the form. When set, it is kept verbatim in the response instead of being generated. */
+  existingContent?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -28,15 +32,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { format, theme, brandPrompt, formatGuidance, imageUrl } = body;
+  const { format, theme, brandPrompt, formatGuidance, imageUrl, existingTitle, existingContent } = body;
   if (format !== "article" && format !== "image" && format !== "carousel" && format !== "video") {
     return NextResponse.json({ error: "Invalid format." }, { status: 400 });
   }
 
+  const hasExistingTitle = typeof existingTitle === "string" && existingTitle.trim() !== "";
+  const hasExistingContent = typeof existingContent === "string" && existingContent.trim() !== "";
+
   const userLines = [
+    hasExistingTitle
+      ? `Title (already written by a human, reproduce it in the JSON exactly as given): ${existingTitle}`
+      : "Title: not written yet, write it yourself.",
+    hasExistingContent
+      ? `Content (already written by a human, reproduce it in the JSON exactly as given): ${existingContent}`
+      : "Content: not written yet, write it yourself.",
     theme
-      ? `Topic: ${theme}`
-      : "Topic: pick an interesting, plausible topic yourself about Daïmo's business (process automation, IT consulting, digitalization, client work, hiring, or company culture).",
+      ? `Topic / guidance: ${theme}`
+      : !hasExistingTitle && !hasExistingContent
+        ? "Topic: pick an interesting, plausible topic yourself about Daïmo's business (process automation, IT consulting, digitalization, client work, hiring, or company culture)."
+        : "",
     imageUrl
       ? "A reference image is attached above. Ground the post in it: describe or build on what is actually shown, and don't invent details beyond what's visible or given in the topic."
       : "",
@@ -96,7 +111,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Malformed AI response." }, { status: 502 });
     }
 
-    return NextResponse.json(parsed);
+    // Belt and suspenders: never trust the model to leave human-written fields
+    // untouched, even though it's instructed to. Force them back exactly.
+    const result = parsed as Record<string, unknown>;
+    if (hasExistingTitle) result.title = existingTitle;
+    if (hasExistingContent) result.content = existingContent;
+
+    return NextResponse.json(result);
   } catch (err) {
     console.error("AI post generation failed:", err);
     return NextResponse.json({ error: "AI generation failed." }, { status: 502 });

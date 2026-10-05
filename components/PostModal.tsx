@@ -9,6 +9,7 @@ import {
   Post,
   PostFormat,
   PostStatus,
+  RegenerateRequest,
 } from "@/lib/types";
 import { generatePostGraphic } from "@/lib/graphic";
 import { sendPostEmail } from "@/lib/sendPostEmail";
@@ -38,7 +39,7 @@ export function PostModal({
   onSave: (post: Post) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
-  onRegenerate?: (theme?: string, format?: PostFormat, referenceImageUrl?: string) => void;
+  onRegenerate?: (request: RegenerateRequest) => void;
   generating?: boolean;
   reviewEmail?: string;
 }) {
@@ -621,9 +622,19 @@ export function PostModal({
               )}
             </div>
             <button
-              onClick={() => onRegenerate(themeHint.trim() || undefined, format, regenImageUrl || undefined)}
+              onClick={() =>
+                onRegenerate({
+                  theme: themeHint.trim() || undefined,
+                  format,
+                  referenceImageUrl: regenImageUrl || undefined,
+                  existingTitle: title.trim() || undefined,
+                  existingContent: content.trim() || undefined,
+                  existingImageUrl: format === "image" ? imageUrl || undefined : undefined,
+                  existingImages: format === "article" || format === "video" ? images : undefined,
+                })
+              }
               disabled={generating}
-              title="le format sélectionné ci-dessus est conservé"
+              title="le format sélectionné ci-dessus est conservé ; le titre, le contenu et l'image déjà remplis le sont aussi, seuls les champs vides sont générés"
               className="w-full rounded-lg bg-daimo-blue px-3 py-2 text-sm font-medium text-white hover:bg-daimo-blue/90 disabled:cursor-wait disabled:opacity-60"
             >
               {generating ? "⏳ Génération…" : `✨ Générer (${FORMAT_LABELS[format]})`}

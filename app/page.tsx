@@ -12,7 +12,7 @@ import { PostModal } from "@/components/PostModal";
 import { InfoModal } from "@/components/InfoModal";
 import { FormatLegend } from "@/components/PostBadge";
 import { usePosts } from "@/lib/usePosts";
-import { FORMAT_LABELS, Post, PostFormat } from "@/lib/types";
+import { FORMAT_LABELS, Post, PostFormat, RegenerateRequest } from "@/lib/types";
 import { todayISO } from "@/lib/date";
 import { createGeneratedPost } from "@/lib/autoGenerate";
 import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
@@ -73,25 +73,20 @@ export default function Home() {
     });
   }
 
-  async function handleGenerate(
-    date: string,
-    time: string,
-    customTheme?: string,
-    replacing?: Post,
-    forcedFormat?: Post["format"],
-    referenceImageUrl?: string
-  ) {
+  async function handleGenerate(date: string, time: string, replacing?: Post, request: RegenerateRequest = {}) {
     setGenerating(true);
     try {
-      const post = await createGeneratedPost(
-        date,
-        time,
-        customTheme,
-        forcedFormat,
+      const post = await createGeneratedPost(date, time, {
+        customTheme: request.theme,
+        forcedFormat: request.format,
+        referenceImageUrl: request.referenceImageUrl,
+        existingTitle: request.existingTitle,
+        existingContent: request.existingContent,
+        existingImageUrl: request.existingImageUrl,
+        existingImages: request.existingImages,
         brandPrompt,
         formatGuidance,
-        referenceImageUrl
-      );
+      });
       setEditingPost(replacing ? { ...post, id: replacing.id, createdAt: replacing.createdAt } : post);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Échec de la génération du post.");
@@ -189,9 +184,7 @@ export default function Home() {
             deletePost(id);
             setEditingPost(null);
           }}
-          onRegenerate={(theme, forcedFormat, imageUrl) =>
-            handleGenerate(editingPost.date, editingPost.time, theme, editingPost, forcedFormat, imageUrl)
-          }
+          onRegenerate={(request) => handleGenerate(editingPost.date, editingPost.time, editingPost, request)}
           generating={generating}
           reviewEmail={reviewEmail || undefined}
         />
@@ -338,11 +331,12 @@ export default function Home() {
           <hr className="border-slate-100" />
 
           <p className="text-xs text-slate-400">
-            La charte graphique (couleurs, polices) n&apos;a pas sa place ici : Claude n&apos;écrit
-            que du texte, jamais de pixels. Le rendu du template (couleurs par catégorie) reste
-            géré directement par l&apos;outil. Le jour où la génération d&apos;image/vidéo via
-            Artlist sera branchée, c&apos;est la requête envoyée à Artlist, pas ce prompt, qui
-            devra porter la charte graphique.
+            Le Bloc 1 rappelle à Claude la charte graphique (couleurs, polices) pour que le ton du
+            texte reste cohérent avec elle, et pour bien choisir la catégorie (tip/client/hiring)
+            qui fixe les couleurs du visuel. Mais Claude n&apos;écrit que du texte, jamais de
+            pixels : le rendu du template reste géré directement par l&apos;outil. Le jour où la
+            génération d&apos;image/vidéo via Artlist sera branchée, c&apos;est la requête envoyée
+            à Artlist, pas ce prompt, qui devra porter la charte graphique pour le rendu lui-même.
           </p>
         </InfoModal>
       )}

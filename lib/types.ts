@@ -35,6 +35,20 @@ export interface Post {
   updatedAt: string;
 }
 
+/**
+ * What the "Générer avec l'IA" box asks for. Any `existing*` field that's
+ * non-empty is kept exactly as-is; the AI only ever writes what's left blank.
+ */
+export interface RegenerateRequest {
+  theme?: string;
+  format?: PostFormat;
+  referenceImageUrl?: string;
+  existingTitle?: string;
+  existingContent?: string;
+  existingImageUrl?: string;
+  existingImages?: string[];
+}
+
 export const FORMAT_LABELS: Record<PostFormat, string> = {
   article: "Article",
   image: "Image + texte",
