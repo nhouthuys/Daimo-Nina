@@ -32,7 +32,6 @@ function toGeneratedContent(ai: { title: string; content: string } & AiResponse,
 async function callAi(
   format: PostFormat,
   theme?: string,
-  guidelines?: string,
   brandPrompt?: string,
   formatGuidance?: string,
   referenceImageUrl?: string
@@ -42,7 +41,7 @@ async function callAi(
     res = await fetch("/api/generate-post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ format, theme, guidelines, brandPrompt, formatGuidance, imageUrl: referenceImageUrl }),
+      body: JSON.stringify({ format, theme, brandPrompt, formatGuidance, imageUrl: referenceImageUrl }),
     });
   } catch {
     throw new Error("Impossible de contacter le serveur de génération (problème réseau).");
@@ -70,10 +69,9 @@ async function callAi(
 export async function generateContentSmart(
   format: PostFormat,
   theme?: string,
-  guidelines?: string,
   brandPrompt?: string,
   formatGuidance?: string,
   referenceImageUrl?: string
 ): Promise<GeneratedContent> {
-  return callAi(format, theme, guidelines, brandPrompt, formatGuidance, referenceImageUrl);
+  return callAi(format, theme, brandPrompt, formatGuidance, referenceImageUrl);
 }

@@ -139,7 +139,6 @@ export async function parseCalendarFile(file: File): Promise<ParsedCalendarEntry
  */
 export async function buildPostsFromEntries(
   entries: ParsedCalendarEntry[],
-  guidelines?: string,
   brandPrompt?: string,
   formatGuidance?: Record<PostFormat, string>
 ): Promise<Post[]> {
@@ -163,7 +162,7 @@ export async function buildPostsFromEntries(
       if (format === "carousel") slideCaptions = splitTextIntoSlides(entry.theme);
     } else {
       const customTheme = entry.type === "theme" ? entry.theme : entry.theme || undefined;
-      const generated = await generateContentSmart(format, customTheme, guidelines, brandPrompt, formatGuidance?.[format]);
+      const generated = await generateContentSmart(format, customTheme, brandPrompt, formatGuidance?.[format]);
       title = generated.title;
       content = generated.content;
       slideCaptions = generated.slides?.map((s) => s.caption);

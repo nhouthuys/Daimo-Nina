@@ -16,7 +16,6 @@ import { FORMAT_LABELS, Post, PostFormat } from "@/lib/types";
 import { todayISO } from "@/lib/date";
 import { createGeneratedPost } from "@/lib/autoGenerate";
 import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
-import { useGuidelines } from "@/lib/useGuidelines";
 import { useBrandPrompt, useFormatGuidance } from "@/lib/usePromptSettings";
 import { DEFAULT_BRAND_PROMPT, DEFAULT_FORMAT_GUIDANCE } from "@/lib/promptDefaults";
 import { useReviewEmail } from "@/lib/useReviewEmail";
@@ -39,7 +38,6 @@ function emptyPost(date: string): Post {
 
 export default function Home() {
   const { posts, ready, upsertPost, deletePost, importPosts } = usePosts();
-  const { guidelines, setGuidelines } = useGuidelines();
   const { brandPrompt, setBrandPrompt } = useBrandPrompt();
   const { formatGuidance, setFormatGuidance } = useFormatGuidance();
   const { email: reviewEmail, setEmail: setReviewEmail } = useReviewEmail();
@@ -49,7 +47,7 @@ export default function Home() {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [infoModal, setInfoModal] = useState<"guidelines" | "charter" | "prompt" | "import-result" | null>(null);
+  const [infoModal, setInfoModal] = useState<"email" | "charter" | "prompt" | "import-result" | null>(null);
   const [promptFormatTab, setPromptFormatTab] = useState<PostFormat>("article");
   const [importMessage, setImportMessage] = useState("");
   const [connected, setConnected] = useState(false);
@@ -89,7 +87,6 @@ export default function Home() {
         date,
         time,
         customTheme,
-        guidelines,
         forcedFormat,
         brandPrompt,
         formatGuidance,
@@ -118,7 +115,7 @@ export default function Home() {
         `${entries.length} thème(s) trouvé(s) dans le fichier.\n\nL'import remplacera le contenu de tout post déjà programmé aux mêmes dates. Continuer ?`
       );
       if (!confirmed) return;
-      const newPosts = await buildPostsFromEntries(entries, guidelines, brandPrompt, formatGuidance);
+      const newPosts = await buildPostsFromEntries(entries, brandPrompt, formatGuidance);
       const { added, updated } = importPosts(newPosts);
       setImportMessage(
         `Import terminé : ${added} post(s) ajouté(s), ${updated} post(s) mis à jour (même date déjà programmée).`
@@ -138,13 +135,9 @@ export default function Home() {
         <Header />
 
         <ActionBar
-          onGuidelines={() => setInfoModal("guidelines")}
+          onEmailSettings={() => setInfoModal("email")}
           onCharter={() => setInfoModal("charter")}
           onPromptSettings={() => setInfoModal("prompt")}
-          onGenerate={(theme, format, imageUrl) =>
-            handleGenerate(todayISO(), "09:00", theme, undefined, format, imageUrl)
-          }
-          generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
           onImportFile={handleImportFile}
           importing={importing}
@@ -196,37 +189,16 @@ export default function Home() {
             deletePost(id);
             setEditingPost(null);
           }}
-          onRegenerate={(theme, forcedFormat) =>
-            handleGenerate(editingPost.date, editingPost.time, theme, editingPost, forcedFormat)
+          onRegenerate={(theme, forcedFormat, imageUrl) =>
+            handleGenerate(editingPost.date, editingPost.time, theme, editingPost, forcedFormat, imageUrl)
           }
+          generating={generating}
           reviewEmail={reviewEmail || undefined}
         />
       )}
 
-      {infoModal === "guidelines" && (
-        <InfoModal title="Consignes d'écriture & vérification" onClose={() => setInfoModal(null)}>
-          <p>
-            Décrivez ici le ton, le style, ce qu&apos;il faut toujours mentionner ou éviter, le
-            public visé… Ces consignes sont envoyées à l&apos;IA à chaque génération de post.
-          </p>
-          <textarea
-            value={guidelines}
-            onChange={(e) => setGuidelines(e.target.value)}
-            rows={6}
-            placeholder="Ex : ton professionnel mais chaleureux, toujours mentionner que Daïmo est basé en Belgique, éviter le jargon technique, s'adresser à des responsables opérationnels de PME…"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
-          />
-          <p className="text-xs text-slate-400">
-            La génération de post nécessite une clé Anthropic (ANTHROPIC_API_KEY) configurée côté
-            serveur, sur Vercel. Sans clé, la génération affiche une erreur claire au lieu de
-            produire un résultat générique : il n&apos;y a pas de générateur de secours.
-          </p>
-
-          <hr className="border-slate-100" />
-
-          <label className="block text-sm font-medium text-slate-700">
-            Email de vérification
-          </label>
+      {infoModal === "email" && (
+        <InfoModal title="Email de vérification" onClose={() => setInfoModal(null)}>
           <p>
             Une fois renseigné : chaque post ouvre un bouton « 📧 Envoyer pour vérification » pour
             un envoi immédiat, <strong>et</strong> tout post au statut « Programmé » vous est
@@ -292,6 +264,11 @@ export default function Home() {
           <p>
             C&apos;est exactement le texte envoyé à Claude pour écrire un post, en deux blocs
             modifiables. Laissez un champ vide pour revenir au texte par défaut.
+          </p>
+          <p className="text-xs text-slate-400">
+            La génération de post nécessite une clé Anthropic (ANTHROPIC_API_KEY) configurée côté
+            serveur, sur Vercel. Sans clé, la génération affiche une erreur claire au lieu de
+            produire un résultat générique : il n&apos;y a pas de générateur de secours.
           </p>
 
           <label className="block text-sm font-medium text-slate-700">

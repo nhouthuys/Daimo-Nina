@@ -45,7 +45,6 @@ export async function createGeneratedPost(
   date: string,
   time: string,
   customTheme?: string,
-  guidelines?: string,
   forcedFormat?: PostFormat,
   brandPrompt?: string,
   formatGuidance?: Record<PostFormat, string>,
@@ -55,7 +54,7 @@ export async function createGeneratedPost(
   const generated =
     customTheme && isFinishedText(customTheme)
       ? contentFromFinishedText(customTheme, format)
-      : await generateContentSmart(format, customTheme, guidelines, brandPrompt, formatGuidance?.[format], referenceImageUrl);
+      : await generateContentSmart(format, customTheme, brandPrompt, formatGuidance?.[format], referenceImageUrl);
   const now = new Date().toISOString();
 
   const post: Post = {

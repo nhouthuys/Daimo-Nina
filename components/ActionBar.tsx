@@ -1,18 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { FORMAT_LABELS, PostFormat } from "@/lib/types";
-import { uploadImage } from "@/lib/uploadImage";
-import { Modal } from "./Modal";
+import { useRef } from "react";
 
 interface ActionBarProps {
-  onGuidelines: () => void;
+  onEmailSettings: () => void;
   onCharter: () => void;
   onPromptSettings: () => void;
-  onGenerate: (theme: string | undefined, format: PostFormat, imageUrl?: string) => void;
   onNewPost: () => void;
   onImportFile: (file: File) => void;
-  generating?: boolean;
   importing?: boolean;
 }
 
@@ -43,49 +38,18 @@ function PillButton({
 }
 
 export function ActionBar({
-  onGuidelines,
+  onEmailSettings,
   onCharter,
   onPromptSettings,
-  onGenerate,
   onNewPost,
   onImportFile,
-  generating = false,
   importing = false,
 }: ActionBarProps) {
-  const [theme, setTheme] = useState("");
-  const [format, setFormat] = useState<PostFormat>("article");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
-  function triggerGenerate() {
-    onGenerate(theme, format, imageUrl || undefined);
-    setMenuOpen(false);
-    setImageUrl("");
-    setUploadError(null);
-  }
-
-  async function handleUploadImage(file: File) {
-    setUploadingImage(true);
-    setUploadError(null);
-    try {
-      const result = await uploadImage(file);
-      if (result.ok && result.url) {
-        setImageUrl(result.url);
-      } else {
-        setUploadError(result.error ?? "Échec de l'upload.");
-      }
-    } finally {
-      setUploadingImage(false);
-    }
-  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <PillButton onClick={onGuidelines}>🧭 Consignes d&apos;écriture</PillButton>
+      <PillButton onClick={onEmailSettings}>📧 Email de vérification</PillButton>
       <PillButton onClick={onCharter}>🎨 Charte graphique</PillButton>
       <PillButton onClick={onPromptSettings}>🧠 Prompt IA</PillButton>
       <PillButton onClick={() => fileInputRef.current?.click()} disabled={importing}>
@@ -102,102 +66,9 @@ export function ActionBar({
           e.target.value = "";
         }}
       />
-      <PillButton onClick={() => setMenuOpen(true)} disabled={generating}>
-        {generating ? "⏳ Génération…" : "✨ Générer un post"}
-      </PillButton>
       <PillButton onClick={onNewPost} primary>
         + Nouveau post
       </PillButton>
-
-      {menuOpen && (
-        <Modal title="Générer un post" onClose={() => setMenuOpen(false)}>
-          <div className="space-y-4">
-            <div>
-              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">
-                1. Format
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(FORMAT_LABELS) as PostFormat[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFormat(f)}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
-                      format === f
-                        ? "border-daimo-blue bg-daimo-blue/10 text-daimo-blue"
-                        : "border-slate-200 text-slate-600 hover:border-daimo-blue/30"
-                    }`}
-                  >
-                    {FORMAT_LABELS[f]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">
-                2. Contenu
-              </span>
-              <input
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !generating) triggerGenerate();
-                }}
-                autoFocus
-                placeholder="Thème (ex : notre partenariat avec…) ou collez directement un texte déjà rédigé — les deux fonctionnent"
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
-              />
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                  Image de référence (optionnel)
-                </span>
-                <button
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={uploadingImage}
-                  className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
-                >
-                  {uploadingImage ? "⏳ Upload…" : "📤 Ajouter une image"}
-                </button>
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUploadImage(file);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-              {imageUrl ? (
-                <div className="flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl} alt="Image de référence" className="h-14 w-14 rounded-lg border border-slate-200 object-cover" />
-                  <button
-                    onClick={() => setImageUrl("")}
-                    className="text-xs font-medium text-slate-400 hover:text-daimo-pink"
-                  >
-                    Retirer
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400">
-                  Une photo que vous avez déjà : l&apos;IA s&apos;en sert pour écrire le post, et
-                  elle devient l&apos;image du post (formats Article, Image, Vidéo).
-                </p>
-              )}
-              {uploadError && <p className="mt-1 text-xs text-daimo-pink">{uploadError}</p>}
-            </div>
-            <div className="flex justify-end">
-              <PillButton onClick={triggerGenerate} primary disabled={generating}>
-                {generating ? "⏳ Génération…" : "3. ✨ Générer"}
-              </PillButton>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

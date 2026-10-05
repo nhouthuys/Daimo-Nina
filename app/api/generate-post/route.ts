@@ -7,7 +7,6 @@ export const runtime = "nodejs";
 interface RequestBody {
   format: "article" | "image" | "carousel" | "video";
   theme?: string;
-  guidelines?: string;
   /** User-editable override for block 1 (brand identity & writing rules). Falls back to DEFAULT_BRAND_PROMPT when empty. */
   brandPrompt?: string;
   /** User-editable override for block 2 (this format's guidance). Falls back to DEFAULT_FORMAT_GUIDANCE[format] when empty. */
@@ -29,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { format, theme, guidelines, brandPrompt, formatGuidance, imageUrl } = body;
+  const { format, theme, brandPrompt, formatGuidance, imageUrl } = body;
   if (format !== "article" && format !== "image" && format !== "carousel" && format !== "video") {
     return NextResponse.json({ error: "Invalid format." }, { status: 400 });
   }
@@ -38,9 +37,8 @@ export async function POST(req: NextRequest) {
     theme
       ? `Topic: ${theme}`
       : "Topic: pick an interesting, plausible topic yourself about Daïmo's business (process automation, IT consulting, digitalization, client work, hiring, or company culture).",
-    guidelines ? `Writing guidelines to follow: ${guidelines}` : "",
     imageUrl
-      ? "A reference image is attached above. Ground the post in it: describe or build on what is actually shown, and don't invent details beyond what's visible or given in the topic/guidelines."
+      ? "A reference image is attached above. Ground the post in it: describe or build on what is actually shown, and don't invent details beyond what's visible or given in the topic."
       : "",
     "Write the post now, as the JSON object described in your instructions.",
   ].filter(Boolean);

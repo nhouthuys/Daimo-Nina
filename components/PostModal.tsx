@@ -31,18 +31,21 @@ export function PostModal({
   onDelete,
   onClose,
   onRegenerate,
+  generating = false,
   reviewEmail,
 }: {
   initial: Post;
   onSave: (post: Post) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
-  onRegenerate?: (theme?: string, format?: PostFormat) => void;
+  onRegenerate?: (theme?: string, format?: PostFormat, referenceImageUrl?: string) => void;
+  generating?: boolean;
   reviewEmail?: string;
 }) {
   const [format, setFormat] = useState<PostFormat>(initial.format);
   const [title, setTitle] = useState(initial.title);
   const [themeHint, setThemeHint] = useState(initial.title);
+  const [regenImageUrl, setRegenImageUrl] = useState("");
   const [content, setContent] = useState(initial.content);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? "");
   const [images, setImages] = useState<string[]>(initial.images ?? []);
@@ -63,6 +66,7 @@ export function PostModal({
   const [uploadError, setUploadError] = useState<{ id: string; message: string } | null>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
   const extraImageInputRef = useRef<HTMLInputElement>(null);
+  const regenImageInputRef = useRef<HTMLInputElement>(null);
   const isEditing = initial.title !== "" || initial.content !== "";
 
   async function handleUploadMainImage(file: File) {
@@ -74,6 +78,21 @@ export function PostModal({
         setImageUrl(result.url);
       } else {
         setUploadError({ id: "main", message: result.error ?? "Échec de l'upload." });
+      }
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
+  async function handleUploadRegenImage(file: File) {
+    setUploadingId("regen");
+    setUploadError(null);
+    try {
+      const result = await uploadImage(file);
+      if (result.ok && result.url) {
+        setRegenImageUrl(result.url);
+      } else {
+        setUploadError({ id: "regen", message: result.error ?? "Échec de l'upload." });
       }
     } finally {
       setUploadingId(null);
@@ -254,9 +273,10 @@ export function PostModal({
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-daimo-blue">2. Contenu — écrire ou générer</span>
               <button
-                onClick={() => onRegenerate()}
+                onClick={() => onRegenerate(undefined, undefined, regenImageUrl || undefined)}
+                disabled={generating}
                 title="Génère un post sur un thème et un format aléatoires, sans tenir compte du champ ni du format ci-dessus"
-                className="shrink-0 text-xs font-medium text-daimo-blue hover:underline"
+                className="shrink-0 text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
               >
                 🎲 Aléatoire
               </button>
@@ -268,12 +288,47 @@ export function PostModal({
               placeholder="Un thème court (ex : Daïmo fête ses 5 ans…) — ou collez un texte déjà rédigé, il sera utilisé tel quel, sans réécriture"
               className="w-full rounded-lg border border-daimo-blue/30 bg-white px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
             />
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-daimo-blue/70">Image de référence (optionnel)</span>
+              <button
+                onClick={() => regenImageInputRef.current?.click()}
+                disabled={uploadingId === "regen"}
+                className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+              >
+                {uploadingId === "regen" ? "⏳ Upload…" : "📤 Ajouter une image"}
+              </button>
+              <input
+                ref={regenImageInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUploadRegenImage(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            {regenImageUrl && (
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={regenImageUrl} alt="Image de référence" className="h-10 w-10 rounded-md border border-daimo-blue/30 object-cover" />
+                <button
+                  onClick={() => setRegenImageUrl("")}
+                  className="text-xs font-medium text-daimo-blue/70 hover:text-daimo-pink"
+                >
+                  Retirer
+                </button>
+              </div>
+            )}
+            {uploadError?.id === "regen" && <p className="text-xs text-daimo-pink">{uploadError.message}</p>}
             <button
-              onClick={() => onRegenerate(themeHint.trim() || undefined, format)}
+              onClick={() => onRegenerate(themeHint.trim() || undefined, format, regenImageUrl || undefined)}
+              disabled={generating}
               title={`Génère un ${FORMAT_LABELS[format].toLowerCase()} à partir de ce texte (le format sélectionné ci-dessous est conservé)`}
-              className="rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90"
+              className="rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90 disabled:cursor-wait disabled:opacity-60"
             >
-              Générer ({FORMAT_LABELS[format].toLowerCase()})
+              {generating ? "⏳ Génération…" : `Générer (${FORMAT_LABELS[format].toLowerCase()})`}
             </button>
           </div>
         )}
@@ -288,7 +343,7 @@ export function PostModal({
             </button>
           ) : (
             <span className="text-xs text-slate-400">
-              Ajoutez un email de vérification dans « Consignes d&apos;écriture » pour envoyer ce post par mail.
+              Ajoutez un email de vérification dans « Email de vérification » pour envoyer ce post par mail.
             </span>
           )}
         </div>
