@@ -268,70 +268,6 @@ export function PostModal({
           </div>
         </div>
 
-        {onRegenerate && (
-          <div className="space-y-2 rounded-lg border border-daimo-blue/20 bg-daimo-blue/5 p-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-daimo-blue">2. Contenu — écrire ou générer</span>
-              <button
-                onClick={() => onRegenerate(undefined, undefined, regenImageUrl || undefined)}
-                disabled={generating}
-                title="Génère un post sur un thème et un format aléatoires, sans tenir compte du champ ni du format ci-dessus"
-                className="shrink-0 text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
-              >
-                🎲 Aléatoire
-              </button>
-            </div>
-            <textarea
-              value={themeHint}
-              onChange={(e) => setThemeHint(e.target.value)}
-              rows={2}
-              placeholder="Un thème court (ex : Daïmo fête ses 5 ans…) — ou collez un texte déjà rédigé, il sera utilisé tel quel, sans réécriture"
-              className="w-full rounded-lg border border-daimo-blue/30 bg-white px-3 py-1.5 text-xs focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
-            />
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-daimo-blue/70">Image de référence (optionnel)</span>
-              <button
-                onClick={() => regenImageInputRef.current?.click()}
-                disabled={uploadingId === "regen"}
-                className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
-              >
-                {uploadingId === "regen" ? "⏳ Upload…" : "📤 Ajouter une image"}
-              </button>
-              <input
-                ref={regenImageInputRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUploadRegenImage(file);
-                  e.target.value = "";
-                }}
-              />
-            </div>
-            {regenImageUrl && (
-              <div className="flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={regenImageUrl} alt="Image de référence" className="h-10 w-10 rounded-md border border-daimo-blue/30 object-cover" />
-                <button
-                  onClick={() => setRegenImageUrl("")}
-                  className="text-xs font-medium text-daimo-blue/70 hover:text-daimo-pink"
-                >
-                  Retirer
-                </button>
-              </div>
-            )}
-            {uploadError?.id === "regen" && <p className="text-xs text-daimo-pink">{uploadError.message}</p>}
-            <button
-              onClick={() => onRegenerate(themeHint.trim() || undefined, format, regenImageUrl || undefined)}
-              disabled={generating}
-              title={`Génère un ${FORMAT_LABELS[format].toLowerCase()} à partir de ce texte (le format sélectionné ci-dessous est conservé)`}
-              className="rounded-full bg-daimo-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-daimo-blue/90 disabled:cursor-wait disabled:opacity-60"
-            >
-              {generating ? "⏳ Génération…" : `Générer (${FORMAT_LABELS[format].toLowerCase()})`}
-            </button>
-          </div>
-        )}
         <div className="flex flex-wrap items-center gap-2">
           {reviewEmail ? (
             <button
@@ -624,6 +560,73 @@ export function PostModal({
               className="mt-2 text-sm font-medium text-daimo-blue hover:underline"
             >
               + Ajouter une slide
+            </button>
+          </div>
+        )}
+
+        {onRegenerate && (
+          <div className="space-y-2 rounded-lg border border-daimo-blue/20 bg-daimo-blue/5 p-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Générer avec l&apos;IA (optionnel)
+              </label>
+              <button
+                onClick={() => setThemeHint("")}
+                className="text-xs font-medium text-daimo-blue hover:underline"
+              >
+                🎲 Aléatoire
+              </button>
+            </div>
+            <textarea
+              value={themeHint}
+              onChange={(e) => setThemeHint(e.target.value)}
+              rows={2}
+              placeholder="Thème ou consigne pour l'IA (laissez vide pour un thème libre)…"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
+            />
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-xs font-medium text-slate-500">
+                  Image de référence — optionnel
+                </label>
+                <button
+                  onClick={() => regenImageInputRef.current?.click()}
+                  disabled={uploadingId === "regen"}
+                  className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+                >
+                  {uploadingId === "regen" ? "⏳ Upload…" : "📤 Ajouter une photo"}
+                </button>
+                <input
+                  ref={regenImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadRegenImage(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+              {regenImageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={regenImageUrl}
+                  alt="Aperçu de l'image de référence"
+                  className="mb-1 h-16 w-16 rounded-lg border border-slate-200 object-cover"
+                />
+              )}
+              {uploadError?.id === "regen" && (
+                <p className="text-xs text-daimo-pink">{uploadError.message}</p>
+              )}
+            </div>
+            <button
+              onClick={() => onRegenerate(themeHint.trim() || undefined, format, regenImageUrl || undefined)}
+              disabled={generating}
+              title="le format sélectionné ci-dessus est conservé"
+              className="w-full rounded-lg bg-daimo-blue px-3 py-2 text-sm font-medium text-white hover:bg-daimo-blue/90 disabled:cursor-wait disabled:opacity-60"
+            >
+              {generating ? "⏳ Génération…" : `✨ Générer (${FORMAT_LABELS[format]})`}
             </button>
           </div>
         )}
