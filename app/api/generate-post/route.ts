@@ -12,6 +12,8 @@ interface RequestBody {
   brandPrompt?: string;
   /** User-editable override for block 2 (this format's guidance). Falls back to DEFAULT_FORMAT_GUIDANCE[format] when empty. */
   formatGuidance?: string;
+  /** A photo the user already has (public URL, e.g. from Blob upload). Sent to Claude as a vision input so the post is grounded in it. */
+  imageUrl?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { format, theme, guidelines, brandPrompt, formatGuidance } = body;
+  const { format, theme, guidelines, brandPrompt, formatGuidance, imageUrl } = body;
   if (format !== "article" && format !== "image" && format !== "carousel" && format !== "video") {
     return NextResponse.json({ error: "Invalid format." }, { status: 400 });
   }
@@ -37,6 +39,9 @@ export async function POST(req: NextRequest) {
       ? `Topic: ${theme}`
       : "Topic: pick an interesting, plausible topic yourself about Daïmo's business (process automation, IT consulting, digitalization, client work, hiring, or company culture).",
     guidelines ? `Writing guidelines to follow: ${guidelines}` : "",
+    imageUrl
+      ? "A reference image is attached above. Ground the post in it: describe or build on what is actually shown, and don't invent details beyond what's visible or given in the topic/guidelines."
+      : "",
     "Write the post now, as the JSON object described in your instructions.",
   ].filter(Boolean);
 
@@ -47,13 +52,20 @@ export async function POST(req: NextRequest) {
     formatGuidance?.trim() || DEFAULT_FORMAT_GUIDANCE[format],
   ].join("\n\n");
 
+  const userContent: Anthropic.MessageParam["content"] = imageUrl
+    ? [
+        { type: "image", source: { type: "url", url: imageUrl } },
+        { type: "text", text: userLines.join("\n") },
+      ]
+    : userLines.join("\n");
+
   try {
     const response = await client.messages.create({
       model: "claude-opus-5-5",
       max_tokens: 4096,
       output_config: { effort: "medium" },
       system,
-      messages: [{ role: "user", content: userLines.join("\n") }],
+      messages: [{ role: "user", content: userContent }],
     });
 
     let text = "";

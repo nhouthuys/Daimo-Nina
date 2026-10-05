@@ -2,13 +2,14 @@
 
 import { useRef, useState } from "react";
 import { FORMAT_LABELS, PostFormat } from "@/lib/types";
+import { uploadImage } from "@/lib/uploadImage";
 import { Modal } from "./Modal";
 
 interface ActionBarProps {
   onGuidelines: () => void;
   onCharter: () => void;
   onPromptSettings: () => void;
-  onGenerate: (theme: string | undefined, format: PostFormat) => void;
+  onGenerate: (theme: string | undefined, format: PostFormat, imageUrl?: string) => void;
   onNewPost: () => void;
   onImportFile: (file: File) => void;
   generating?: boolean;
@@ -54,11 +55,32 @@ export function ActionBar({
   const [theme, setTheme] = useState("");
   const [format, setFormat] = useState<PostFormat>("article");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   function triggerGenerate() {
-    onGenerate(theme, format);
+    onGenerate(theme, format, imageUrl || undefined);
     setMenuOpen(false);
+    setImageUrl("");
+    setUploadError(null);
+  }
+
+  async function handleUploadImage(file: File) {
+    setUploadingImage(true);
+    setUploadError(null);
+    try {
+      const result = await uploadImage(file);
+      if (result.ok && result.url) {
+        setImageUrl(result.url);
+      } else {
+        setUploadError(result.error ?? "Échec de l'upload.");
+      }
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   return (
@@ -124,6 +146,49 @@ export function ActionBar({
                 placeholder="Thème (ex : notre partenariat avec…) ou collez directement un texte déjà rédigé — les deux fonctionnent"
                 className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm focus:border-daimo-blue focus:outline-none focus:ring-1 focus:ring-daimo-blue"
               />
+            </div>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Image de référence (optionnel)
+                </span>
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="text-xs font-medium text-daimo-blue hover:underline disabled:opacity-50"
+                >
+                  {uploadingImage ? "⏳ Upload…" : "📤 Ajouter une image"}
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadImage(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+              {imageUrl ? (
+                <div className="flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageUrl} alt="Image de référence" className="h-14 w-14 rounded-lg border border-slate-200 object-cover" />
+                  <button
+                    onClick={() => setImageUrl("")}
+                    className="text-xs font-medium text-slate-400 hover:text-daimo-pink"
+                  >
+                    Retirer
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">
+                  Une photo que vous avez déjà : l&apos;IA s&apos;en sert pour écrire le post, et
+                  elle devient l&apos;image du post (formats Article, Image, Vidéo).
+                </p>
+              )}
+              {uploadError && <p className="mt-1 text-xs text-daimo-pink">{uploadError}</p>}
             </div>
             <div className="flex justify-end">
               <PillButton onClick={triggerGenerate} primary disabled={generating}>

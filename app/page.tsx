@@ -80,11 +80,21 @@ export default function Home() {
     time: string,
     customTheme?: string,
     replacing?: Post,
-    forcedFormat?: Post["format"]
+    forcedFormat?: Post["format"],
+    referenceImageUrl?: string
   ) {
     setGenerating(true);
     try {
-      const post = await createGeneratedPost(date, time, customTheme, guidelines, forcedFormat, brandPrompt, formatGuidance);
+      const post = await createGeneratedPost(
+        date,
+        time,
+        customTheme,
+        guidelines,
+        forcedFormat,
+        brandPrompt,
+        formatGuidance,
+        referenceImageUrl
+      );
       setEditingPost(replacing ? { ...post, id: replacing.id, createdAt: replacing.createdAt } : post);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Échec de la génération du post.");
@@ -131,7 +141,9 @@ export default function Home() {
           onGuidelines={() => setInfoModal("guidelines")}
           onCharter={() => setInfoModal("charter")}
           onPromptSettings={() => setInfoModal("prompt")}
-          onGenerate={(theme, format) => handleGenerate(todayISO(), "09:00", theme, undefined, format)}
+          onGenerate={(theme, format, imageUrl) =>
+            handleGenerate(todayISO(), "09:00", theme, undefined, format, imageUrl)
+          }
           generating={generating}
           onNewPost={() => setEditingPost(emptyPost(todayISO()))}
           onImportFile={handleImportFile}

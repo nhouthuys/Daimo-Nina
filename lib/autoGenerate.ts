@@ -34,6 +34,12 @@ function contentFromFinishedText(text: string, format: PostFormat): GeneratedCon
  * `brandPrompt`/`formatGuidance` are the user-editable overrides for the two
  * Claude prompt blocks; `formatGuidance` is keyed by format, and only the
  * entry for the format actually used here is sent.
+ *
+ * `referenceImageUrl`, when given, is a photo the user already has: Claude
+ * sees it (as a vision input) while writing the post when an AI call is
+ * made, and it becomes the post's own image/attachment afterward — it
+ * replaces the generated template for "image", and is attached directly for
+ * "article"/"video" (the two formats with a plain image-attachment slot).
  */
 export async function createGeneratedPost(
   date: string,
@@ -42,13 +48,14 @@ export async function createGeneratedPost(
   guidelines?: string,
   forcedFormat?: PostFormat,
   brandPrompt?: string,
-  formatGuidance?: Record<PostFormat, string>
+  formatGuidance?: Record<PostFormat, string>,
+  referenceImageUrl?: string
 ): Promise<Post> {
   const format = forcedFormat ?? pickWeightedFormat();
   const generated =
     customTheme && isFinishedText(customTheme)
       ? contentFromFinishedText(customTheme, format)
-      : await generateContentSmart(format, customTheme, guidelines, brandPrompt, formatGuidance?.[format]);
+      : await generateContentSmart(format, customTheme, guidelines, brandPrompt, formatGuidance?.[format], referenceImageUrl);
   const now = new Date().toISOString();
 
   const post: Post = {
@@ -66,11 +73,17 @@ export async function createGeneratedPost(
   };
 
   if (format === "image") {
-    post.imageUrl = await generatePostGraphic({
-      category: generated.category,
-      headline: generated.title,
-      highlight: generated.highlight,
-    });
+    post.imageUrl = referenceImageUrl
+      ? referenceImageUrl
+      : await generatePostGraphic({
+          category: generated.category,
+          headline: generated.title,
+          highlight: generated.highlight,
+        });
+  }
+
+  if ((format === "article" || format === "video") && referenceImageUrl) {
+    post.images = [referenceImageUrl];
   }
 
   if (format === "carousel" && post.slides) {

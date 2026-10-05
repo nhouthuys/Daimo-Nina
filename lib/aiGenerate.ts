@@ -34,14 +34,15 @@ async function callAi(
   theme?: string,
   guidelines?: string,
   brandPrompt?: string,
-  formatGuidance?: string
+  formatGuidance?: string,
+  referenceImageUrl?: string
 ): Promise<GeneratedContent> {
   let res: Response;
   try {
     res = await fetch("/api/generate-post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ format, theme, guidelines, brandPrompt, formatGuidance }),
+      body: JSON.stringify({ format, theme, guidelines, brandPrompt, formatGuidance, imageUrl: referenceImageUrl }),
     });
   } catch {
     throw new Error("Impossible de contacter le serveur de génération (problème réseau).");
@@ -63,14 +64,16 @@ async function callAi(
  *
  * `brandPrompt`/`formatGuidance` are the user-editable overrides for the two
  * prompt blocks (brand identity, and this format's guidance); omit to use
- * the server's defaults.
+ * the server's defaults. `referenceImageUrl`, when given, is sent to Claude
+ * as a vision input so it can ground the post in that photo.
  */
 export async function generateContentSmart(
   format: PostFormat,
   theme?: string,
   guidelines?: string,
   brandPrompt?: string,
-  formatGuidance?: string
+  formatGuidance?: string,
+  referenceImageUrl?: string
 ): Promise<GeneratedContent> {
-  return callAi(format, theme, guidelines, brandPrompt, formatGuidance);
+  return callAi(format, theme, guidelines, brandPrompt, formatGuidance, referenceImageUrl);
 }
