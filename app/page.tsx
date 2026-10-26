@@ -19,7 +19,7 @@ import { buildPostsFromEntries, parseCalendarFile } from "@/lib/xlsxImport";
 import { useBrandPrompt, useFormatGuidance } from "@/lib/usePromptSettings";
 import { DEFAULT_BRAND_PROMPT, DEFAULT_FORMAT_GUIDANCE } from "@/lib/promptDefaults";
 import { useReviewEmail } from "@/lib/useReviewEmail";
-import { pushSyncedState } from "@/lib/syncStore";
+import { fetchSyncedState, pushSyncedState } from "@/lib/syncStore";
 
 function emptyPost(date: string): Post {
   const now = new Date().toISOString();
@@ -37,7 +37,7 @@ function emptyPost(date: string): Post {
 }
 
 export default function Home() {
-  const { posts, ready, upsertPost, deletePost, importPosts } = usePosts();
+  const { posts, ready, upsertPost, deletePost, importPosts, replacePosts } = usePosts();
   const { brandPrompt, setBrandPrompt } = useBrandPrompt();
   const { formatGuidance, setFormatGuidance } = useFormatGuidance();
   const { email: reviewEmail, setEmail: setReviewEmail } = useReviewEmail();
@@ -54,9 +54,33 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The server (Blob) is the source of truth across devices: pull it once on
+  // load, before this device's own changes start pushing over it below.
+  // Without this, every browser only ever read its own localStorage, so two
+  // computers silently diverged from each other with no way to reconcile.
+  // The push effect waits for this pull to settle first, so a slow network
+  // can't let this device's stale local copy win the race and overwrite a
+  // teammate's more recent one.
+  const [serverPulled, setServerPulled] = useState(false);
   useEffect(() => {
     if (!ready) return;
+    let cancelled = false;
+    fetchSyncedState().then((state) => {
+      if (cancelled) return;
+      if (state) {
+        replacePosts(state.posts);
+        setReviewEmail(state.reviewEmail);
+      }
+      setServerPulled(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, replacePosts, setReviewEmail]);
+
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!ready || !serverPulled) return;
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(() => {
       pushSyncedState({ posts, reviewEmail });
@@ -64,7 +88,7 @@ export default function Home() {
     return () => {
       if (syncTimer.current) clearTimeout(syncTimer.current);
     };
-  }, [posts, reviewEmail, ready]);
+  }, [posts, reviewEmail, ready, serverPulled]);
 
   function goToMonth(delta: number) {
     setCursor((prev) => {

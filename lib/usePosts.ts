@@ -61,6 +61,11 @@ export function usePosts() {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
+  /** Replaces the whole list in one go — used to hydrate from the server's state on load. */
+  const replacePosts = useCallback((next: Post[]) => {
+    setPosts(next);
+  }, []);
+
   /**
    * Merges freshly-imported posts into the calendar: a post landing on a date
    * that already has one replaces it (keeping its original id/createdAt so it
@@ -88,5 +93,5 @@ export function usePosts() {
     [posts]
   );
 
-  return { posts, ready, upsertPost, deletePost, importPosts };
+  return { posts, ready, upsertPost, deletePost, importPosts, replacePosts };
 }

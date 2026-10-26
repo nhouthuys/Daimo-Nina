@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isBlobConfigured, writeJsonBlob } from "@/lib/blobStore";
-import { STORE_PATHNAME } from "@/lib/syncStore";
+import { isBlobConfigured, readJsonBlob, writeJsonBlob } from "@/lib/blobStore";
+import { STORE_PATHNAME, SyncedState } from "@/lib/syncStore";
 
 export const runtime = "nodejs";
 
 /**
- * Mirrors the browser's localStorage state (posts + review email) to Blob
- * storage so the scheduled sender (which runs server-side, with no access to
- * the browser) can see what's programmed. Called in the background on every
- * change; failures are non-fatal, the app works from localStorage regardless.
+ * The server-side mirror of posts + review email. This is the single source
+ * of truth across devices: every browser pulls it on load and pushes to it
+ * on every change (see lib/syncStore.ts), so two people/computers stay in
+ * sync instead of each keeping its own silently diverging localStorage copy.
+ * The scheduled sender also reads it, since it has no access to any browser.
  */
 export async function POST(req: NextRequest) {
   if (!isBlobConfigured()) {
@@ -32,5 +33,19 @@ export async function POST(req: NextRequest) {
     console.error("sync-store error:", err);
     const detail = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Échec de la synchronisation : ${detail}` }, { status: 502 });
+  }
+}
+
+/** Called on load by every browser, so they all start from the same state. */
+export async function GET() {
+  if (!isBlobConfigured()) {
+    return NextResponse.json({ state: null });
+  }
+  try {
+    const state = await readJsonBlob<SyncedState>(STORE_PATHNAME);
+    return NextResponse.json({ state });
+  } catch (err) {
+    console.error("sync-store read error:", err);
+    return NextResponse.json({ state: null });
   }
 }

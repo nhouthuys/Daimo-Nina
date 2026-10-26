@@ -20,3 +20,20 @@ export async function pushSyncedState(state: SyncedState): Promise<void> {
     // Best-effort: the app runs fully from localStorage regardless.
   }
 }
+
+/**
+ * Fetches the server's state on load, so every device starts from the same
+ * posts/review email instead of its own, silently diverging localStorage
+ * copy. Returns null when sync isn't configured, nothing's been pushed yet,
+ * or the request fails — callers then keep whatever localStorage already has.
+ */
+export async function fetchSyncedState(): Promise<SyncedState | null> {
+  try {
+    const res = await fetch("/api/sync-store", { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { state?: SyncedState | null };
+    return data.state ?? null;
+  } catch {
+    return null;
+  }
+}
