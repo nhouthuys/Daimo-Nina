@@ -3,6 +3,7 @@ import { generateContentSmart } from "./aiGenerate";
 import { generatePostGraphic } from "./graphic";
 import { Post, PostFormat } from "./types";
 import { deriveTitleFromText, guessCategory, isFinishedText, splitTextIntoSlides } from "./textInput";
+import { queueArtlistVisual } from "./artlistRelay";
 
 /** A theme field can hold a finished post instead of a topic — use it as-is, no AI rewrite, same as the Excel "Texte" type. */
 function contentFromFinishedText(text: string, format: PostFormat): GeneratedContent {
@@ -103,6 +104,21 @@ export async function createGeneratedPost(date: string, time: string, options: C
             headline: generated.title,
             highlight: generated.highlight,
           });
+
+    // No photo of their own: automatically ask the Artlist relay for a real
+    // visual to offer as an upgrade over the template above (see
+    // lib/artlistRelay.ts). Fires once, best-effort, never blocks the post.
+    if (!existingImageUrl && !referenceImageUrl) {
+      await queueArtlistVisual({
+        requestId: `${post.id}:main`,
+        postId: post.id,
+        title: generated.title,
+        category: generated.category,
+        highlight: generated.highlight,
+        kind: "image",
+        target: { type: "main" },
+      });
+    }
   }
 
   if (format === "article" || format === "video") {
@@ -110,6 +126,16 @@ export async function createGeneratedPost(date: string, time: string, options: C
       post.images = existingImages;
     } else if (referenceImageUrl) {
       post.images = [referenceImageUrl];
+    } else if (format === "video") {
+      await queueArtlistVisual({
+        requestId: `${post.id}:main`,
+        postId: post.id,
+        title: generated.title,
+        category: generated.category,
+        highlight: generated.highlight,
+        kind: "video",
+        target: { type: "main" },
+      });
     }
   }
 
@@ -126,6 +152,20 @@ export async function createGeneratedPost(date: string, time: string, options: C
         }),
       }))
     );
+
+    if (!referenceImageUrl) {
+      for (const slide of post.slides) {
+        await queueArtlistVisual({
+          requestId: `${post.id}:slide:${slide.id}`,
+          postId: post.id,
+          title: slide.caption,
+          category: generated.category,
+          highlight: generated.highlight,
+          kind: "image",
+          target: { type: "slide", slideId: slide.id },
+        });
+      }
+    }
   }
 
   return post;

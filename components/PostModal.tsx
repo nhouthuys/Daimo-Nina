@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CarouselSlide,
   FORMAT_LABELS,
@@ -14,6 +14,7 @@ import {
 import { generatePostGraphic } from "@/lib/graphic";
 import { sendPostEmail } from "@/lib/sendPostEmail";
 import { uploadImage } from "@/lib/uploadImage";
+import { ArtlistVisualResult, fetchArtlistResults } from "@/lib/artlistRelay";
 import { Modal } from "./Modal";
 
 function newSlide(): CarouselSlide {
@@ -69,6 +70,33 @@ export function PostModal({
   const extraImageInputRef = useRef<HTMLInputElement>(null);
   const regenImageInputRef = useRef<HTMLInputElement>(null);
   const isEditing = initial.title !== "" || initial.content !== "";
+
+  // Artlist generates asynchronously in a separate, periodically-woken Claude
+  // session (see lib/artlistRelay.ts): poll for a result while this post is
+  // open, and offer to apply it rather than swapping it in automatically, so
+  // it never overwrites an image the human is actively editing.
+  const [artlistResults, setArtlistResults] = useState<ArtlistVisualResult[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    async function poll() {
+      const results = await fetchArtlistResults();
+      if (!cancelled) setArtlistResults(results);
+    }
+    poll();
+    const interval = setInterval(poll, 20000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+  const mainArtlistResult = artlistResults.find(
+    (r) => r.requestId === `${initial.id}:main` && r.status === "done" && r.resultUrl
+  );
+  function artlistResultForSlide(slideId: string) {
+    return artlistResults.find(
+      (r) => r.requestId === `${initial.id}:slide:${slideId}` && r.status === "done" && r.resultUrl
+    );
+  }
 
   async function handleUploadMainImage(file: File) {
     setUploadingId("main");
@@ -380,6 +408,17 @@ export function PostModal({
             {uploadError?.id === "extra" && (
               <p className="mt-1 text-xs text-daimo-pink">{uploadError.message}</p>
             )}
+            {format === "video" && mainArtlistResult && !images.includes(mainArtlistResult.resultUrl as string) && (
+              <div className="mt-2 flex items-center justify-between rounded-lg border border-daimo-green/30 bg-daimo-green/5 px-3 py-2">
+                <span className="text-xs font-medium text-daimo-green">🎨 Visuel Artlist disponible</span>
+                <button
+                  onClick={() => setImages((prev) => [...prev, mainArtlistResult.resultUrl as string])}
+                  className="text-xs font-medium text-daimo-green hover:underline"
+                >
+                  Ajouter
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -422,6 +461,17 @@ export function PostModal({
                 côté navigateur. Pour une vraie photo, téléchargez-la depuis Artlist puis utilisez le
                 champ ci-dessous.
               </p>
+              {mainArtlistResult && mainArtlistResult.resultUrl !== imageUrl && (
+                <div className="mt-2 flex items-center justify-between rounded-lg border border-daimo-green/30 bg-daimo-green/5 px-3 py-2">
+                  <span className="text-xs font-medium text-daimo-green">🎨 Visuel Artlist disponible</span>
+                  <button
+                    onClick={() => setImageUrl(mainArtlistResult.resultUrl as string)}
+                    className="text-xs font-medium text-daimo-green hover:underline"
+                  >
+                    Appliquer
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between">
@@ -553,6 +603,24 @@ export function PostModal({
                   {slideImageError?.id === slide.id && (
                     <p className="ml-7 text-xs text-daimo-pink">{slideImageError.message}</p>
                   )}
+                  {(() => {
+                    const result = artlistResultForSlide(slide.id);
+                    return result && result.resultUrl !== slide.imageUrl ? (
+                      <div className="ml-7 flex items-center justify-between rounded-lg border border-daimo-green/30 bg-daimo-green/5 px-2 py-1">
+                        <span className="text-xs font-medium text-daimo-green">🎨 Visuel Artlist disponible</span>
+                        <button
+                          onClick={() =>
+                            setSlides((prev) =>
+                              prev.map((s) => (s.id === slide.id ? { ...s, imageUrl: result.resultUrl } : s))
+                            )
+                          }
+                          className="text-xs font-medium text-daimo-green hover:underline"
+                        >
+                          Appliquer
+                        </button>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               ))}
             </div>
