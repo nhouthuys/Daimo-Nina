@@ -8,8 +8,12 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Uploads a user-provided image (e.g. downloaded from a stock library like
- * Artlist) to Blob storage and returns its public URL, so it can be pasted
- * into the same "photo déjà existante" field that already accepts any URL.
+ * Artlist) to Blob storage and returns a URL on this app's own domain that
+ * serves it back (see app/api/blob-image/[...path]/route.ts), so it can be
+ * pasted into the same "photo déjà existante" field that already accepts any
+ * URL. The underlying blob itself is private (this project's store rejects
+ * public blobs outright) — the proxy route is what makes the link directly
+ * viewable in <img> tags, emails, and anywhere else a plain URL is needed.
  */
 export async function POST(req: NextRequest) {
   if (!isBlobConfigured()) {
@@ -39,12 +43,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const extension = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
-    const blob = await put(`uploads/${crypto.randomUUID()}.${extension}`, file, {
-      access: "public",
+    const pathname = `uploads/${crypto.randomUUID()}.${extension}`;
+    await put(pathname, file, {
+      access: "private",
       addRandomSuffix: false,
       contentType: file.type,
     });
-    return NextResponse.json({ ok: true, url: blob.url });
+    return NextResponse.json({ ok: true, url: `/api/blob-image/${pathname}` });
   } catch (err) {
     console.error("upload-image error:", err);
     const detail = err instanceof Error ? err.message : String(err);
